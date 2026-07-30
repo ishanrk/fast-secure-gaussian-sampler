@@ -1,6 +1,6 @@
 # fast-secure-gaussian-sampler
 
-A fast and optimized C- implementation of the [1] **Maskaglia** approach to discrete Gaussian
+A fast and optimized C- implementation of the **Maskaglia** [1] approach to discrete Gaussian
 sampling used for Post Quantum Crypto Schemes
 
 
