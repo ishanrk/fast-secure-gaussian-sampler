@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A research implementation of Maskaglia for fast, secure discrete Gaussian sampling.">
+  <title>Fast Secure Gaussian Sampling</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="#top" aria-label="Fast Secure Gaussian Sampling home">
+      <span class="wordmark-mark" aria-hidden="true"></span>
+      <span>FSGS</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#intro">Intro</a>
+      <a href="#motivation">Motivation</a>
+      <a class="nav-repository" href="https://github.com/ishanrk/fast-secure-gaussian-sampler">Repository</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Post-quantum cryptography · Research implementation</p>
+        <h1 id="page-title">Fast Secure<br>Gaussian Sampling</h1>
+        <p class="subtitle">An implementation of <span>Maskaglia</span></p>
+        <p class="hero-summary">
+          Exploring efficient discrete Gaussian sampling while accounting for
+          the control-flow and power side channels that appear in real hardware.
+        </p>
+        <a class="primary-link" href="#motivation">
+          Read the motivation
+          <span aria-hidden="true">↓</span>
+        </a>
+      </div>
+
+      <div class="distribution-card" aria-label="A bell curve representing a Gaussian distribution">
+        <div class="card-label">
+          <span>Target distribution</span>
+          <span class="status-dot">Discrete</span>
+        </div>
+        <svg class="curve" viewBox="0 0 560 250" role="img" aria-labelledby="curve-title curve-description">
+          <title id="curve-title">Discrete Gaussian curve</title>
+          <desc id="curve-description">A symmetric bell curve centered at zero with discrete samples along the curve.</desc>
+          <g class="grid" aria-hidden="true">
+            <line x1="30" y1="210" x2="530" y2="210"></line>
+            <line x1="280" y1="24" x2="280" y2="220"></line>
+            <line x1="30" y1="160" x2="530" y2="160"></line>
+            <line x1="30" y1="110" x2="530" y2="110"></line>
+            <line x1="30" y1="60" x2="530" y2="60"></line>
+          </g>
+          <path class="curve-fill" d="M30 209 C110 208 157 194 195 145 C229 101 246 44 280 34 C314 44 331 101 365 145 C403 194 450 208 530 209 L530 210 L30 210 Z"></path>
+          <path class="curve-line" d="M30 209 C110 208 157 194 195 145 C229 101 246 44 280 34 C314 44 331 101 365 145 C403 194 450 208 530 209"></path>
+          <g class="samples" aria-hidden="true">
+            <circle cx="80" cy="206" r="4"></circle>
+            <circle cx="130" cy="199" r="4"></circle>
+            <circle cx="180" cy="163" r="4"></circle>
+            <circle cx="230" cy="99" r="4"></circle>
+            <circle cx="280" cy="34" r="5"></circle>
+            <circle cx="330" cy="99" r="4"></circle>
+            <circle cx="380" cy="163" r="4"></circle>
+            <circle cx="430" cy="199" r="4"></circle>
+            <circle cx="480" cy="206" r="4"></circle>
+          </g>
+          <g class="axis-labels" aria-hidden="true">
+            <text x="72" y="238">−4σ</text>
+            <text x="271" y="238">0</text>
+            <text x="470" y="238">+4σ</text>
+          </g>
+        </svg>
+        <div class="formula" aria-label="p of x equals e to the negative x squared over two sigma squared">
+          <span class="formula-name">p(x)</span>
+          <span>=</span>
+          <span>exp</span>
+          <span class="formula-group">
+            <span class="parenthesis">(</span>
+            <span class="fraction">
+              <span>−x²</span>
+              <span>2σ²</span>
+            </span>
+            <span class="parenthesis">)</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="intro" id="intro" aria-labelledby="intro-title">
+      <div class="section-index">01</div>
+      <div class="section-heading">
+        <p class="eyebrow">Intro</p>
+        <h2 id="intro-title">Sampling without<br>giving the sample away.</h2>
+      </div>
+      <p class="section-lede">
+        Discrete Gaussian sampling is a small operation with an unusually large
+        security burden. The distribution must be right, the implementation must
+        be fast, and its physical behavior must not reveal the result.
+      </p>
+    </section>
+
+    <section class="motivation" id="motivation" aria-labelledby="motivation-title">
+      <div class="section-topline">
+        <div>
+          <p class="eyebrow">Motivation</p>
+          <h2 id="motivation-title">Why the sampler matters</h2>
+        </div>
+        <p>Seven constraints shape the problem.</p>
+      </div>
+
+      <ol class="motivation-list">
+        <li>
+          <div class="point-meta">The target</div>
+          <div class="point-content">
+            <h3>Sample a discrete Gaussian</h3>
+            <p>
+              We want to sample from <strong>ℤ</strong> according to a distribution
+              shaped like <span class="inline-formula">p(x) = exp(−x² / 2σ²)</span>
+              for some width <span class="inline-formula">σ</span>.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div class="point-meta">The application</div>
+          <div class="point-content">
+            <h3>A building block for PQC</h3>
+            <p>
+              Gaussian sampling is useful across post-quantum schemes and
+              algorithms—for example, when generating error vectors for ML-KEMs.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div class="point-meta">The threat</div>
+          <div class="point-content">
+            <h3>The sample must remain private</h3>
+            <p>
+              The procedure should not leak information about what was sampled
+              through timing, power consumption, or other side channels.
+            </p>
+          </div>
+        </li>
+        <li class="example-point">
+          <div class="point-meta">Example 01</div>
+          <div class="point-content">
+            <h3>Control flow can reveal the sign</h3>
+            <p>
+              If sampling from <strong>ℤ⁺</strong> takes fewer branches or less
+              processing than sampling from <strong>ℤ⁻</strong>, an attacker may
+              learn whether the result is positive or negative.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div class="point-meta">The baseline</div>
+          <div class="point-content">
+            <h3>Constant-time execution</h3>
+            <p>
+              Addressing timing and control-flow leakage means designing code
+              whose execution time does not depend on secret sampled values.
+            </p>
+          </div>
+        </li>
+        <li class="example-point">
+          <div class="point-meta">Example 02</div>
+          <div class="point-content">
+            <h3>Constant time is not the finish line</h3>
+            <p>
+              Even constant-time code may leak physically: placing
+              <code>0000</code> in an output register can consume different power
+              than placing <code>1111</code> in that same register.
+            </p>
+          </div>
+        </li>
+        <li class="closing-point">
+          <div class="point-meta">The challenge</div>
+          <div class="point-content">
+            <h3>Careful, secure, and still fast</h3>
+            <p>
+              Sampling needs to be engineered with exceptional care while
+              remaining efficient enough for practical cryptographic systems.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <div>
+      <span class="wordmark-mark" aria-hidden="true"></span>
+      <span>Fast Secure Gaussian Sampling</span>
+    </div>
+    <p>Early-stage research software · Not for production use</p>
+  </footer>
+</body>
+</html>
