@@ -2,12 +2,11 @@ CC ?= cc
 CPPFLAGS ?= -Iinclude
 CFLAGS ?= -O3 -std=c99
 WARNFLAGS = -Wall -Wextra -Wpedantic -Wshadow -Wundef
-LDLIBS ?= -lm
 
 BUILD_DIR = build
 BIN_DIR = bin
 REF_OBJ = $(BUILD_DIR)/maskaglia_ref.o
-RNG_OBJ = $(BUILD_DIR)/test_rng.o
+RANDOMCOINS_OBJ = $(BUILD_DIR)/rng_shake.o
 TEST_BIN = $(BIN_DIR)/test_distribution
 BENCH_BIN = $(BIN_DIR)/bench_sampler
 
@@ -27,16 +26,16 @@ $(BUILD_DIR) $(BIN_DIR):
 $(REF_OBJ): src/maskaglia_ref.c include/maskaglia.h | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -c -o $@ $<
 
-$(RNG_OBJ): src/test_rng.c | $(BUILD_DIR)
+$(RANDOMCOINS_OBJ): src/rng_shake.c | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -c -o $@ $<
 
-$(TEST_BIN): tests/test_distribution.c $(REF_OBJ) $(RNG_OBJ) | $(BIN_DIR)
+$(TEST_BIN): tests/test_distribution.c $(REF_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -o $@ \
-		tests/test_distribution.c $(REF_OBJ) $(RNG_OBJ) $(LDLIBS)
+		tests/test_distribution.c $(REF_OBJ) $(RANDOMCOINS_OBJ)
 
-$(BENCH_BIN): bench/bench_sampler.c $(REF_OBJ) $(RNG_OBJ) | $(BIN_DIR)
+$(BENCH_BIN): bench/bench_sampler.c $(REF_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -o $@ \
-		bench/bench_sampler.c $(REF_OBJ) $(RNG_OBJ) $(LDLIBS)
+		bench/bench_sampler.c $(REF_OBJ) $(RANDOMCOINS_OBJ)
 
 clean:
-	rm -f $(REF_OBJ) $(RNG_OBJ) $(TEST_BIN) $(BENCH_BIN)
+	rm -f $(REF_OBJ) $(RANDOMCOINS_OBJ) $(TEST_BIN) $(BENCH_BIN)
