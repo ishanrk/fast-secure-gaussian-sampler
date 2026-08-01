@@ -1,4 +1,4 @@
-# fast-secure-gaussian-sampler
+# Implementing the Side Channel Resistant Discrete Sampler Maskaglia
 
 A fast and optimized C- implementation of the **Maskaglia** [1] approach to discrete Gaussian
 sampling used for Post Quantum Crypto Schemes
