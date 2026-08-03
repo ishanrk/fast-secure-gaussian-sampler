@@ -9,6 +9,8 @@
 #define SAMPLES 1000000u
 #define LIMIT 32
 
+typedef int (*sample_fn)(int16_t *sample, unsigned parameter_set, unsigned coset, maskaglia_randombytes_fn randombytes, void *random_context);
+
 static uint64_t randomword(uint64_t *state)
 {
 	uint64_t value;
@@ -91,12 +93,17 @@ static void test_errors(void)
 	assert(cdt_sample_ref(&sample, 256, 2, randomcoins, &state) != 0);
 	assert(cdt_sample_ref(&sample, 256, 0, NULL, &state) != 0);
 	assert(cdt_sample_ref(&sample, 256, 0, badcoins, &state) != 0);
+	assert(knuth_yao_sample_ref(NULL, 256, 0, randomcoins, &state) != 0);
+	assert(knuth_yao_sample_ref(&sample, 0, 0, randomcoins, &state) != 0);
+	assert(knuth_yao_sample_ref(&sample, 256, 2, randomcoins, &state) != 0);
+	assert(knuth_yao_sample_ref(&sample, 256, 0, NULL, &state) != 0);
+	assert(knuth_yao_sample_ref(&sample, 256, 0, badcoins, &state) != 0);
 	assert(sample == 7);
 }
 
-static void test_cdt(unsigned parameter_set, unsigned coset)
+static void test_sampler(const char *name, sample_fn sampler_fn, unsigned parameter_set, unsigned coset)
 {
-	uint64_t state = UINT64_C(0x43445453414D504C) ^ ((uint64_t)parameter_set << 8) ^ coset;
+	uint64_t state = UINT64_C(0x53414D504C455246) ^ ((uint64_t)parameter_set << 8) ^ coset ^ (uint8_t)name[0];
 	uint64_t frequency[2 * LIMIT + 1] = { 0 };
 	double total = 0.0, squares = 0.0, norm = 0.0, expected_variance = 0.0, max_diff = 0.0, mean, variance;
 	double width = sigma(parameter_set);
@@ -119,7 +126,7 @@ static void test_cdt(unsigned parameter_set, unsigned coset)
 	{
 		int16_t value;
 
-		result = cdt_sample_ref(&value, parameter_set, coset, randomcoins, &state);
+		result = sampler_fn(&value, parameter_set, coset, randomcoins, &state);
 		assert(result == 0);
 		assert(same_coset(value, coset));
 		assert(value >= -LIMIT && value <= LIMIT);
@@ -144,7 +151,7 @@ static void test_cdt(unsigned parameter_set, unsigned coset)
 		}
 	}
 
-	printf("cdt %u coset %u: mean %.4f variance %.4f max diff %.5f\n", parameter_set, coset, mean, variance, max_diff);
+	printf("%s %u coset %u: mean %.4f variance %.4f max diff %.5f\n", name, parameter_set, coset, mean, variance, max_diff);
 	assert(fabs(mean) < 0.01);
 	assert(fabs(variance - expected_variance) < 0.03);
 	assert(max_diff < 0.0025);
@@ -161,7 +168,8 @@ int main(void)
 	{
 		for (coset = 0; coset < 2; coset++)
 		{
-			test_cdt(parameter_sets[i], coset);
+			test_sampler("cdt", cdt_sample_ref, parameter_sets[i], coset);
+			test_sampler("knuth-yao", knuth_yao_sample_ref, parameter_sets[i], coset);
 		}
 	}
 

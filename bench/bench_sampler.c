@@ -7,6 +7,8 @@
 
 #define SAMPLES 1000000u
 
+typedef int (*sample_fn)(int16_t *sample, unsigned parameter_set, unsigned coset, maskaglia_randombytes_fn randombytes, void *random_context);
+
 static uint64_t randomword(uint64_t *state)
 {
 	uint64_t value;
@@ -40,9 +42,9 @@ static int randomcoins(void *context, uint8_t *output, size_t output_length)
 	return 0;
 }
 
-static void bench_cdt(unsigned parameter_set, unsigned coset)
+static void bench_one(const char *name, sample_fn sampler_fn, unsigned parameter_set, unsigned coset)
 {
-	uint64_t state = UINT64_C(0x43445442454E4348) ^ ((uint64_t)parameter_set << 8) ^ coset;
+	uint64_t state = UINT64_C(0x42454E434853414D) ^ ((uint64_t)parameter_set << 8) ^ coset ^ (uint8_t)name[0];
 	int64_t total = 0;
 	clock_t start, end;
 	unsigned i;
@@ -52,16 +54,16 @@ static void bench_cdt(unsigned parameter_set, unsigned coset)
 	{
 		int16_t sample;
 
-		if (cdt_sample_ref(&sample, parameter_set, coset, randomcoins, &state) != 0)
+		if (sampler_fn(&sample, parameter_set, coset, randomcoins, &state) != 0)
 		{
-			puts("cdt sampler failed");
+			puts("sampler failed");
 			return;
 		}
 		total += sample;
 	}
 	end = clock();
 
-	printf("cdt %u coset %u: %.2f ns/sample (%lld)\n", parameter_set, coset, (double)(end - start) * 1.0e9 / CLOCKS_PER_SEC / SAMPLES, (long long)total);
+	printf("%s %u coset %u: %.2f ns/sample (%lld)\n", name, parameter_set, coset, (double)(end - start) * 1.0e9 / CLOCKS_PER_SEC / SAMPLES, (long long)total);
 }
 
 int main(void)
@@ -74,7 +76,8 @@ int main(void)
 	{
 		for (coset = 0; coset < 2; coset++)
 		{
-			bench_cdt(parameter_sets[i], coset);
+			bench_one("cdt", cdt_sample_ref, parameter_sets[i], coset);
+			bench_one("knuth-yao", knuth_yao_sample_ref, parameter_sets[i], coset);
 		}
 	}
 
