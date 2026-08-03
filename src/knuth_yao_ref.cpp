@@ -1,10 +1,12 @@
-#include "maskaglia.h"
+#include "maskaglia.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
 
 /* Generated from HAWK's src/hawk_sign.c: https://github.com/hawk-sign/dev */
-static const uint64_t table256_0[] = {
+static constexpr std::uint64_t table256_0[] = {
 	UINT64_C(0x651E3810A9EDE8B8), UINT64_C(0x3DF03BD50CCD85B3),
 	UINT64_C(0x0E3C223408804489), UINT64_C(0x013A3B925315EAB0),
 	UINT64_C(0x000A2A9F7E727E8C), UINT64_C(0x00001F97DDE71C3C),
@@ -12,7 +14,7 @@ static const uint64_t table256_0[] = {
 	UINT64_C(0x000000000002A524), UINT64_C(0x0000000000000029)
 };
 
-static const uint64_t table256_1[] = {
+static constexpr std::uint64_t table256_1[] = {
 	UINT64_C(0x5974D7EEB69CFC77), UINT64_C(0x2190658675CA5AA9),
 	UINT64_C(0x04B9985219DF32E5), UINT64_C(0x003FE3ACA1581D8B),
 	UINT64_C(0x00014421635AF6EA), UINT64_C(0x00000268FBEA9984),
@@ -20,7 +22,7 @@ static const uint64_t table256_1[] = {
 	UINT64_C(0x0000000000000BDF)
 };
 
-static const uint64_t table512_0[] = {
+static constexpr std::uint64_t table512_0[] = {
 	UINT64_C(0x4FE9CF61B7D7EC2A), UINT64_C(0x3AD6DFAF411BC95C),
 	UINT64_C(0x177C7BD996808082), UINT64_C(0x05150F688D16B13E),
 	UINT64_C(0x0098A1217BB5FD3B), UINT64_C(0x0009B4F171F8B3C0),
@@ -29,7 +31,7 @@ static const uint64_t table512_0[] = {
 	UINT64_C(0x000000000004740F), UINT64_C(0x00000000000001D7)
 };
 
-static const uint64_t table512_1[] = {
+static constexpr std::uint64_t table512_1[] = {
 	UINT64_C(0x4A06872EC4DBD97B), UINT64_C(0x282181B022202CC2),
 	UINT64_C(0x0BCB59A31DE40FE5), UINT64_C(0x01E1112C8249A2D0),
 	UINT64_C(0x00298D6454B2661A), UINT64_C(0x0001F21B3B610E7A),
@@ -38,7 +40,7 @@ static const uint64_t table512_1[] = {
 	UINT64_C(0x0000000000003173), UINT64_C(0x000000000000000F)
 };
 
-static const uint64_t table1024_0[] = {
+static constexpr std::uint64_t table1024_0[] = {
 	UINT64_C(0x4E9F155745226BF8), UINT64_C(0x3A759390DCF23692),
 	UINT64_C(0x1808362833B6B51C), UINT64_C(0x057647CA635F33D6),
 	UINT64_C(0x00AFB4501A8EA553), UINT64_C(0x000C34E60005288D),
@@ -48,7 +50,7 @@ static const uint64_t table1024_0[] = {
 	UINT64_C(0x0000000000000001)
 };
 
-static const uint64_t table1024_1[] = {
+static constexpr std::uint64_t table1024_1[] = {
 	UINT64_C(0x4901FCA3A9D11AE8), UINT64_C(0x285D2F5AE5D61257),
 	UINT64_C(0x0C5686F5B9F869B7), UINT64_C(0x0215C70891724CCC),
 	UINT64_C(0x0031DF5BAA6CF8EB), UINT64_C(0x00029384C5D97288),
@@ -57,15 +59,15 @@ static const uint64_t table1024_1[] = {
 	UINT64_C(0x0000000000008F9D), UINT64_C(0x0000000000000036)
 };
 
-int knuth_yao_sample_ref(int16_t *sample, unsigned parameter_set, unsigned coset, maskaglia_randombytes_fn randombytes, void *random_context)
+int knuth_yao_sample_ref(std::int16_t *sample, unsigned parameter_set, unsigned coset, maskaglia_randombytes_fn randombytes, void *random_context)
 {
-	const uint64_t *table;
-	uint8_t coins[8];
-	size_t i, length;
+	const std::uint64_t *table;
+	std::array<std::uint8_t, 8> coins{};
+	std::size_t i, length;
 	unsigned bit, digit;
 	int distance, value;
 
-	if (sample == NULL || randombytes == NULL || coset > 1)
+	if (sample == nullptr || randombytes == nullptr || coset > 1)
 	{
 		return -1;
 	}
@@ -74,21 +76,21 @@ int knuth_yao_sample_ref(int16_t *sample, unsigned parameter_set, unsigned coset
 	{
 		case 256:
 			table = coset == 0 ? table256_0 : table256_1;
-			length = coset == 0 ? sizeof table256_0 / sizeof table256_0[0] : sizeof table256_1 / sizeof table256_1[0];
+			length = coset == 0 ? std::size(table256_0) : std::size(table256_1);
 			break;
 		case 512:
 			table = coset == 0 ? table512_0 : table512_1;
-			length = coset == 0 ? sizeof table512_0 / sizeof table512_0[0] : sizeof table512_1 / sizeof table512_1[0];
+			length = coset == 0 ? std::size(table512_0) : std::size(table512_1);
 			break;
 		case 1024:
 			table = coset == 0 ? table1024_0 : table1024_1;
-			length = coset == 0 ? sizeof table1024_0 / sizeof table1024_0[0] : sizeof table1024_1 / sizeof table1024_1[0];
+			length = coset == 0 ? std::size(table1024_0) : std::size(table1024_1);
 			break;
 		default:
 			return -1;
 	}
 
-	if (randombytes(random_context, coins, sizeof coins) != 0)
+	if (randombytes(random_context, coins.data(), coins.size()) != 0)
 	{
 		return -1;
 	}
@@ -99,20 +101,20 @@ int knuth_yao_sample_ref(int16_t *sample, unsigned parameter_set, unsigned coset
 		distance = (distance << 1) + ((coins[bit >> 3] >> (bit & 7)) & 1);
 		for (i = 0; i < length; i++)
 		{
-			digit = (unsigned)((table[i] >> (63u - bit)) & 1u);
-			distance -= (int)digit;
-			value = (int)(2 * i + coset);
+			digit = static_cast<unsigned>((table[i] >> (63u - bit)) & 1u);
+			distance -= static_cast<int>(digit);
+			value = static_cast<int>(2 * i + coset);
 			if (distance < 0)
 			{
-				*sample = (int16_t)value;
+				*sample = static_cast<std::int16_t>(value);
 				return 0;
 			}
 			if (value != 0)
 			{
-				distance -= (int)digit;
+				distance -= static_cast<int>(digit);
 				if (distance < 0)
 				{
-					*sample = (int16_t)-value;
+					*sample = static_cast<std::int16_t>(-value);
 					return 0;
 				}
 			}

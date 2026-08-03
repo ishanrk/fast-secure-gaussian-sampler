@@ -1,16 +1,18 @@
-#include "maskaglia.h"
+#include "maskaglia.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
 
 struct row
 {
-	uint64_t lo;
-	uint16_t hi;
+	std::uint64_t lo;
+	std::uint16_t hi;
 };
 
 /* From HAWK's src/hawk_sign.c: https://github.com/hawk-sign/dev */
-static const struct row table256[] = {
+static constexpr row table256[] = {
 	{ UINT64_C(0x71FBD58485D45050), UINT16_C(0x4D70) }, { UINT64_C(0x1408A4B181C718B1), UINT16_C(0x268B) },
 	{ UINT64_C(0x54114F1DC2FA7AC9), UINT16_C(0x0F80) }, { UINT64_C(0x614569CC54722DC9), UINT16_C(0x04FA) },
 	{ UINT64_C(0x42F74ADDA0B5AE61), UINT16_C(0x0144) }, { UINT64_C(0x151C5CDCBAFF49A3), UINT16_C(0x0041) },
@@ -23,7 +25,7 @@ static const struct row table256[] = {
 	{ UINT64_C(0x000000000000007B), UINT16_C(0x0000) }, { UINT64_C(0x0000000000000000), UINT16_C(0x0000) }
 };
 
-static const struct row table512[] = {
+static constexpr row table512[] = {
 	{ UINT64_C(0x0C27920A04F8F267), UINT16_C(0x580B) }, { UINT64_C(0x3C689D9213449DC9), UINT16_C(0x35F9) },
 	{ UINT64_C(0x1C4FF17C204AA058), UINT16_C(0x1D34) }, { UINT64_C(0x7B908C81FCE3524F), UINT16_C(0x0DD7) },
 	{ UINT64_C(0x5E63263BE0098FFD), UINT16_C(0x05B7) }, { UINT64_C(0x4EBEFD8FF4F07378), UINT16_C(0x020C) },
@@ -39,7 +41,7 @@ static const struct row table512[] = {
 	{ UINT64_C(0x0000000000000006), UINT16_C(0x0000) }, { UINT64_C(0x0000000000000000), UINT16_C(0x0000) }
 };
 
-static const struct row table1024[] = {
+static constexpr row table1024[] = {
 	{ UINT64_C(0x3AAA2EB76504E560), UINT16_C(0x58B0) }, { UINT64_C(0x01AE2B17728DF2DE), UINT16_C(0x36FE) },
 	{ UINT64_C(0x70E1C03E49BB683E), UINT16_C(0x1E3A) }, { UINT64_C(0x6A00B82C69624C93), UINT16_C(0x0EA0) },
 	{ UINT64_C(0x55CDA662EF2D1C48), UINT16_C(0x0632) }, { UINT64_C(0x2685DB30348656A4), UINT16_C(0x024A) },
@@ -55,34 +57,36 @@ static const struct row table1024[] = {
 	{ UINT64_C(0x0000000000000021), UINT16_C(0x0000) }, { UINT64_C(0x0000000000000000), UINT16_C(0x0000) }
 };
 
-static uint64_t read64(const uint8_t *buf)
+static std::uint64_t read64(const std::uint8_t *buf)
 {
-	uint64_t value = 0;
+	std::uint64_t value = 0;
 	unsigned i;
 
 	for (i = 0; i < 8; i++)
 	{
-		value |= (uint64_t)buf[i] << (8u * i);
+		value |= static_cast<std::uint64_t>(buf[i]) << (8u * i);
 	}
 
 	return value;
 }
 
-static uint16_t read16(const uint8_t *buf)
+static std::uint16_t read16(const std::uint8_t *buf)
 {
-	return (uint16_t)((uint16_t)buf[0] | (uint16_t)((uint16_t)buf[1] << 8));
+	std::uint16_t lo = buf[0], hi = static_cast<std::uint16_t>(static_cast<unsigned>(buf[1]) << 8u);
+
+	return static_cast<std::uint16_t>(lo | hi);
 }
 
-int cdt_sample_ref(int16_t *sample, unsigned parameter_set, unsigned coset, maskaglia_randombytes_fn randombytes, void *random_context)
+int cdt_sample_ref(std::int16_t *sample, unsigned parameter_set, unsigned coset, maskaglia_randombytes_fn randombytes, void *random_context)
 {
-	const struct row *table;
-	uint8_t coins[10];
-	uint64_t lo;
-	uint32_t hi, carry, count, sign;
-	int32_t value;
-	size_t i, length;
+	const row *table;
+	std::array<std::uint8_t, 10> coins{};
+	std::uint64_t lo;
+	std::uint32_t hi, carry, count, sign;
+	std::int32_t value;
+	std::size_t i, length;
 
-	if (sample == NULL || randombytes == NULL || coset > 1)
+	if (sample == nullptr || randombytes == nullptr || coset > 1)
 	{
 		return -1;
 	}
@@ -91,40 +95,40 @@ int cdt_sample_ref(int16_t *sample, unsigned parameter_set, unsigned coset, mask
 	{
 		case 256:
 			table = table256;
-			length = sizeof table256 / sizeof table256[0];
+			length = std::size(table256);
 			break;
 		case 512:
 			table = table512;
-			length = sizeof table512 / sizeof table512[0];
+			length = std::size(table512);
 			break;
 		case 1024:
 			table = table1024;
-			length = sizeof table1024 / sizeof table1024[0];
+			length = std::size(table1024);
 			break;
 		default:
 			return -1;
 	}
 
-	if (randombytes(random_context, coins, sizeof coins) != 0)
+	if (randombytes(random_context, coins.data(), coins.size()) != 0)
 	{
 		return -1;
 	}
 
-	lo = read64(coins);
-	hi = (uint32_t)(read16(coins + 8) & UINT16_C(0x7FFF));
-	sign = (uint32_t)(lo >> 63);
+	lo = read64(coins.data());
+	hi = static_cast<std::uint32_t>(read16(coins.data() + 8) & UINT16_C(0x7FFF));
+	sign = static_cast<std::uint32_t>(lo >> 63);
 	lo &= UINT64_C(0x7FFFFFFFFFFFFFFF);
 	count = 0;
 
 	for (i = coset; i < length; i += 2)
 	{
-		carry = (uint32_t)((lo - table[i].lo) >> 63);
-		count += (hi - (uint32_t)table[i].hi - carry) >> 31;
+		carry = static_cast<std::uint32_t>((lo - table[i].lo) >> 63);
+		count += (hi - static_cast<std::uint32_t>(table[i].hi) - carry) >> 31;
 	}
 
-	value = (int32_t)((count << 1) + coset);
-	value *= 1 - 2 * (int32_t)sign;
-	*sample = (int16_t)value;
+	value = static_cast<std::int32_t>((count << 1) + coset);
+	value *= 1 - 2 * static_cast<std::int32_t>(sign);
+	*sample = static_cast<std::int16_t>(value);
 
 	return 0;
 }

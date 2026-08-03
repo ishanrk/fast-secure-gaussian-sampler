@@ -1,8 +1,7 @@
-CC ?= cc
+CXX ?= c++
 CPPFLAGS ?= -Iinclude
-CFLAGS ?= -O3 -std=c99
-WARNFLAGS = -Wall -Wextra -Wpedantic -Wshadow -Wundef
-LDLIBS ?= -lm
+CXXFLAGS ?= -O3 -std=c++17
+WARNFLAGS = -Wall -Wextra -Wpedantic -Wshadow -Wundef -Wold-style-cast
 
 BUILD_DIR = build
 BIN_DIR = bin
@@ -26,25 +25,25 @@ bench: $(BENCH_BIN)
 $(BUILD_DIR) $(BIN_DIR):
 	mkdir -p $@
 
-$(REF_OBJ): src/maskaglia_ref.c include/maskaglia.h | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -c -o $@ $<
+$(REF_OBJ): src/maskaglia_ref.cpp include/maskaglia.hpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
 
-$(CDT_OBJ): src/cdt_ref.c include/maskaglia.h | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -c -o $@ $<
+$(CDT_OBJ): src/cdt_ref.cpp include/maskaglia.hpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
 
-$(KNUTH_YAO_OBJ): src/knuth_yao_ref.c include/maskaglia.h | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -c -o $@ $<
+$(KNUTH_YAO_OBJ): src/knuth_yao_ref.cpp include/maskaglia.hpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
 
-$(RANDOMCOINS_OBJ): src/rng_shake.c | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -c -o $@ $<
+$(RANDOMCOINS_OBJ): src/rng_shake.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
 
-$(TEST_BIN): tests/test_distribution.c $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -o $@ \
-		tests/test_distribution.c $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) $(LDLIBS)
+$(TEST_BIN): tests/test_distribution.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -o $@ \
+		tests/test_distribution.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ)
 
-$(BENCH_BIN): bench/bench_sampler.c $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -o $@ \
-		bench/bench_sampler.c $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) $(LDLIBS)
+$(BENCH_BIN): bench/bench_sampler.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -o $@ \
+		bench/bench_sampler.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ)
 
 clean:
 	rm -f $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) $(TEST_BIN) $(BENCH_BIN)
