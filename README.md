@@ -40,6 +40,12 @@ sum exactly to `2^64` for each parameter-set and coset pair.
 The test and benchmark programs use a deterministic SplitMix64 stream. It is
 not a cryptographic random source. `src/rng_shake.cpp` is still a placeholder.
 
+## Bit tools
+
+`include/tools.hpp` provides 32-bit reversal and conversion between 32 words
+and 32 bit planes. The bitslice transform uses a five-stage SWAR transpose and
+supports using the same buffer for input and output.
+
 ## Build and run
 
 The Makefile builds the project as C++17.
@@ -47,6 +53,7 @@ The Makefile builds the project as C++17.
 ```sh
 make
 ./bin/test_distribution
+./bin/test_tools
 ./bin/bench_sampler
 ```
 
