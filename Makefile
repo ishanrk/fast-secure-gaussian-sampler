@@ -1,58 +1,82 @@
-CXX ?= c++
-CPPFLAGS ?= -Iinclude
-CXXFLAGS ?= -O3 -std=c++17
-WARNFLAGS = -Wall -Wextra -Wpedantic -Wshadow -Wundef -Wold-style-cast
+CC ?= cc
+AR ?= ar
+OUT ?= build
 
-BUILD_DIR = build
-BIN_DIR = bin
-REF_OBJ = $(BUILD_DIR)/maskaglia_ref.o
-CDT_OBJ = $(BUILD_DIR)/cdt_ref.o
-KNUTH_YAO_OBJ = $(BUILD_DIR)/knuth_yao_ref.o
-RANDOMCOINS_OBJ = $(BUILD_DIR)/rng_shake.o
-TOOLS_OBJ = $(BUILD_DIR)/tools.o
-TEST_BIN = $(BIN_DIR)/test_distribution
-TOOLS_TEST_BIN = $(BIN_DIR)/test_tools
-BENCH_BIN = $(BIN_DIR)/bench_sampler
+CPPFLAGS ?=
+PROJECT_CPPFLAGS = -Iinclude
+CFLAGS ?= -O3
+WARNFLAGS = -std=c99 -Wall -Wextra -Wpedantic -Wshadow -Wconversion \
+	-Wstrict-prototypes -Wmissing-prototypes
+LDLIBS = -lm
 
-.PHONY: all test bench clean
+SOURCES = src/core/rng.c src/core/params.c src/ref/sampler.c \
+	src/portable/pack.c
+OBJECTS = $(SOURCES:%.c=$(OUT)/%.o)
+DEPENDENCIES = $(OBJECTS:.o=.d)
+LIBRARY = $(OUT)/libgaussian_sampler.a
+TESTS = $(OUT)/test_rng $(OUT)/test_ref $(OUT)/test_pack \
+	$(OUT)/test_stats
+BENCHMARKS = $(OUT)/bench_ref $(OUT)/bench_pack
 
-all: $(TEST_BIN) $(TOOLS_TEST_BIN) $(BENCH_BIN)
+.PHONY: all test test-fast test-guard bench sanitize clean
 
-test: $(TEST_BIN) $(TOOLS_TEST_BIN)
-	./$(TEST_BIN)
-	./$(TOOLS_TEST_BIN)
+all: $(LIBRARY)
 
-bench: $(BENCH_BIN)
-	./$(BENCH_BIN)
+$(LIBRARY): $(OBJECTS)
+	@mkdir -p $(@D)
+	$(AR) rcs $@ $^
 
-$(BUILD_DIR) $(BIN_DIR):
-	mkdir -p $@
+$(OUT)/%.o: %.c
+	@mkdir -p $(@D)
+	$(CC) $(PROJECT_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) \
+		-MMD -MP -c $< -o $@
 
-$(REF_OBJ): src/maskaglia_ref.cpp include/maskaglia.hpp | $(BUILD_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
+$(OUT)/test_%: tests/test_%.c $(LIBRARY) tests/test_util.h
+	$(CC) $(PROJECT_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) \
+		-MMD -MP -MF $@.d -MT $@ $< $(LIBRARY) $(LDLIBS) -o $@
 
-$(CDT_OBJ): src/cdt_ref.cpp include/maskaglia.hpp | $(BUILD_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
+test-fast: $(OUT)/test_rng $(OUT)/test_ref $(OUT)/test_pack
+	@$(OUT)/test_rng
+	@$(OUT)/test_ref
+	@$(OUT)/test_pack
 
-$(KNUTH_YAO_OBJ): src/knuth_yao_ref.cpp include/maskaglia.hpp | $(BUILD_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
+test-guard:
+	@mkdir -p $(OUT)
+	@$(CC) $(PROJECT_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -c \
+		tests/test_guard.c -o $(OUT)/test_guard_control.o
+	@if $(CC) $(PROJECT_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) \
+		-DMG_ENABLE_MASKED -c tests/test_guard.c \
+		-o $(OUT)/test_guard.o >$(OUT)/test_guard.log 2>&1; then \
+		echo "test_guard: compile unexpectedly passed"; exit 1; \
+	elif grep -q "masked maskaglia backend not implemented yet" \
+		$(OUT)/test_guard.log; then \
+		echo "test_guard: ok"; \
+	else \
+		cat $(OUT)/test_guard.log; \
+		echo "test_guard: compile failed for an unexpected reason"; exit 1; \
+	fi
 
-$(RANDOMCOINS_OBJ): src/rng_shake.cpp | $(BUILD_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
+test: $(TESTS) test-guard
+	@$(OUT)/test_rng
+	@$(OUT)/test_ref
+	@$(OUT)/test_pack
+	@$(OUT)/test_stats
 
-$(TOOLS_OBJ): src/tools.cpp include/tools.hpp | $(BUILD_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -c -o $@ $<
+$(OUT)/bench_%: bench/bench_%.c $(LIBRARY)
+	$(CC) $(PROJECT_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) \
+		-MMD -MP -MF $@.d -MT $@ $< $(LIBRARY) $(LDLIBS) -o $@
 
-$(TEST_BIN): tests/test_distribution.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -o $@ \
-		tests/test_distribution.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ)
+bench: $(BENCHMARKS)
+	@$(OUT)/bench_ref
+	@$(OUT)/bench_pack
 
-$(TOOLS_TEST_BIN): tests/test_tools.cpp $(TOOLS_OBJ) | $(BIN_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -o $@ tests/test_tools.cpp $(TOOLS_OBJ)
-
-$(BENCH_BIN): bench/bench_sampler.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) | $(BIN_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(WARNFLAGS) -o $@ \
-		bench/bench_sampler.cpp $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ)
+sanitize:
+	rm -rf $(OUT)/san
+	ASAN_OPTIONS=detect_leaks=0 $(MAKE) OUT=$(OUT)/san CFLAGS="-O1 -g \
+		-fsanitize=address,undefined \
+		-fno-omit-frame-pointer" test
 
 clean:
-	rm -f $(REF_OBJ) $(CDT_OBJ) $(KNUTH_YAO_OBJ) $(RANDOMCOINS_OBJ) $(TOOLS_OBJ) $(TEST_BIN) $(TOOLS_TEST_BIN) $(BENCH_BIN)
+	rm -rf $(OUT)
+
+-include $(DEPENDENCIES) $(TESTS:%=%.d) $(BENCHMARKS:%=%.d)

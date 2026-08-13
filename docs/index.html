@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A research implementation of Maskaglia for fast, secure discrete Gaussian sampling.">
+  <meta name="description" content="A portable C99 research implementation of the Maskaglia approach to discrete Gaussian sampling.">
   <title>Fast Secure Gaussian Sampling</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,25 +12,30 @@
     <a class="project-name" href="#top">fast-secure-gaussian-sampler</a>
     <nav aria-label="Primary navigation">
       <a href="#about">About</a>
-      <a href="#performance">Why fast</a>
-      <a href="#masking">Masking</a>
+      <a href="#checkpoint">Checkpoint</a>
+      <a href="#design">Design</a>
+      <a href="#security">Security</a>
+      <a href="#roadmap">Roadmap</a>
       <a href="https://github.com/ishanrk/fast-secure-gaussian-sampler">GitHub</a>
     </nav>
   </header>
 
   <main id="top">
     <section class="hero" aria-labelledby="page-title">
-      <p class="kicker">Research implementation in C++</p>
+      <p class="kicker">Portable C99 · checkpoint 1</p>
       <h1 id="page-title">Fast Secure<br>Gaussian Sampling</h1>
-      <p class="subtitle">An implementation of <span>Maskaglia</span></p>
+      <p class="subtitle">A research implementation of <span>Maskaglia</span></p>
       <p class="summary">
-        This project studies discrete Gaussian sampling as a small, standalone
-        cryptographic component: first a clear scalar implementation, then
-        distribution tests and benchmarks, and only then bitslicing and masking.
+        This project treats discrete Gaussian sampling as a small, inspectable
+        cryptographic component. The first checkpoint establishes an unmasked
+        correctness base for later bitsliced, masked, and architecture-specific
+        implementations.
       </p>
       <p class="status">
-        Current status: scalar reference scaffold. The sampler is not yet
-        implemented and the code is not suitable for production use.
+        <strong>Research status:</strong> this code is not production
+        cryptography and is not side-channel secure. The current floating
+        sampler is an approximate, variable-time diagnostic; the masked backend
+        and scheme adapters remain disabled.
       </p>
     </section>
 
@@ -74,79 +79,172 @@
       <p>
         Both have the same bell-shaped decay. The difference is the domain:
         a normal random variable is real-valued, while a discrete Gaussian
-        returns an integer.
+        assigns probability to a countable set of points.
       </p>
     </figure>
 
     <section id="about" aria-labelledby="about-title">
-      <h2 id="about-title">What discrete Gaussian sampling does</h2>
+      <h2 id="about-title">The transform under study</h2>
       <p>
-        A discrete Gaussian sampler outputs an integer <var>x</var> with
-        probability proportional to
-        <span class="formula">exp(−(x − c)² / 2σ²)</span>. The center
-        <var>c</var> determines where the distribution is located and
-        <var>σ</var> determines its width. Values near the center are likely;
-        values farther away become exponentially less likely.
+        Write <var>t</var> for a center bit and <var>c</var> = <var>t</var>/2.
+        Maskaglia begins with the discrete-Laplace proposal
+        <span class="formula">q<sub>c</sub>(z) ∝ 2<sup>−|z−c|</sup></span>.
+        For <var>c</var> = 0 the duplicate negative encoding of zero is removed;
+        for <var>c</var> = 1/2 the two signs map a geometric draw <var>k</var>
+        to −<var>k</var> and <var>k</var> + 1.
       </p>
       <p>
-        Cryptographic code needs more than a curve that looks right. The output
-        probabilities must closely match the target distribution, including its
-        tails, because bias can invalidate the assumptions used in a security
-        proof.
-      </p>
-    </section>
-
-    <section id="performance" aria-labelledby="performance-title">
-      <h2 id="performance-title">Why a fast implementation matters</h2>
-      <p>
-        Discrete Gaussian sampling is used to generate short, statistically
-        controlled vectors in lattice cryptography. Falcon is a concrete
-        example: its signing procedure samples a short lattice vector from a
-        Gaussian distribution so that signatures do not reveal the secret
-        signing basis. Gaussian samplers also appear in lattice trapdoor
-        algorithms.
-      </p>
-      <p>
-        Signing may require many coefficient samples, placing the sampler on a
-        frequently executed path rather than in one-time setup. A slow sampler
-        therefore increases signature latency and is especially expensive on
-        small processors. A useful implementation must control the cost of
-        random bits, rejection steps, table access, and arithmetic while
-        preserving the intended distribution.
+        With rational scale <var>s</var>, rejection uses the exponent
+        <span class="formula">e(z) = (|z−c|/s − s/2)²</span>. Checkpoint 1
+        computes this exponent as a checked, reduced rational and tests the
+        kernel identity behind the transform. Its final Bernoulli decision uses
+        <code>exp2l()</code> only as a convenient diagnostic oracle, so the
+        complete sampled distribution is not yet certified.
       </p>
     </section>
 
-    <section id="masking" aria-labelledby="masking-title">
-      <h2 id="masking-title">Why masking is part of the project</h2>
+    <section id="checkpoint" class="scope" aria-labelledby="checkpoint-title">
+      <h2 id="checkpoint-title">What checkpoint 1 implements</h2>
+      <ul class="feature-list">
+        <li>
+          <strong>Exact buffered bit stream</strong>
+          Caller-injected, exact-fill randomness; little-endian, least-significant-bit-first consumption; sticky source and bound errors.
+        </li>
+        <li>
+          <strong>Geometric primitive</strong>
+          Counts zero bits before the first one, with a word-level <code>ctz</code> fast path and a public maximum bound.
+        </li>
+        <li>
+          <strong>Two Laplace proposals</strong>
+          Scalar proposal recipes for the integer and half-integer centers <var>c</var> = 0 and <var>c</var> = 1/2, with errors instead of clipped over-bound outputs.
+        </li>
+        <li>
+          <strong>Rational rejection exponent</strong>
+          Checked 64-bit arithmetic, explicit overflow errors, and a reduced fraction suitable for differential testing.
+        </li>
+        <li>
+          <strong>Diagnostic scalar sampler</strong>
+          An approximate, variable-time floating implementation for correctness experiments and statistical tests.
+        </li>
+        <li>
+          <strong>32 × 16 bitslice packing</strong>
+          A portable SWAR transpose mapping bit <var>b</var> of lane <var>i</var> to bit <var>i</var> of plane <var>b</var>.
+        </li>
+      </ul>
       <p>
-        Constant-time code limits leakage from secret-dependent branches and
-        memory access, but it does not by itself stop power or electromagnetic
-        measurements from correlating with intermediate values. Masking
-        represents a sensitive value as randomized shares and performs the
-        computation on those shares, making a single physical observation less
-        directly related to the secret.
+        The deterministic test and build harness covers bit ordering, failure
+        propagation, proposal fixtures, the exact kernel identity, overflow
+        handling, mapping, the full bitslice basis, sanitizer runs, and
+        approximate distribution moments.
       </p>
       <p>
-        Masking adds randomness, operations, and verification work. That is why
-        this repository starts with an unmasked scalar reference: establish the
-        distribution and baseline cost first, then compare a 32-sample
-        bitsliced version, and only after that add masking.
+        <code>gmax</code> and <code>tries</code> are public failure bounds. An
+        over-bound call returns no sample; silently retrying would condition the
+        distribution on success. A certified total failure and tail analysis is
+        therefore still roadmap work.
       </p>
     </section>
 
-    <section class="scope" aria-labelledby="scope-title">
-      <h2 id="scope-title">Implementation order</h2>
+    <section id="design" aria-labelledby="design-title">
+      <h2 id="design-title">A boundary built for later masking</h2>
+      <p>
+        The core owns sampling; cryptographic-scheme adapters depend on that
+        core, never the reverse. No heap allocation, hidden random source, or
+        native-architecture flag is required by the portable build. The caller
+        supplies an RNG callback that either fills the entire request or fails.
+      </p>
+      <pre class="flow" aria-label="Implementation architecture"><code>caller RNG + rational parameters ── scalar C99 reference       implemented
+32 × 16 pack/unpack ── masked bitslice core ── target backend ── scheme adapter
+     implemented              planned              planned          planned</code></pre>
+      <p>
+        Scalar reference functions may return ordinary integers because they
+        are explicitly unmasked. A future masked interface must retain all 32
+        lanes as Boolean-share bit planes through the consuming scheme instead
+        of unmasking samples at the API boundary. Sampling coins and fresh
+        masking randomness will use separate contexts.
+      </p>
+    </section>
+
+    <section id="security" aria-labelledby="security-title">
+      <h2 id="security-title">Security claims stop at the evidence</h2>
+      <p>
+        The current checkpoint is a correctness and measurement base. It makes
+        no constant-time, probing-security, PINI, power, electromagnetic, or
+        production-parameter claim. Ordinary <code>libm</code> and the finite
+        uniform conversion used by the diagnostic path have no portable
+        certified error bound.
+      </p>
+      <p>
+        The masked capability flag is zero, and enabling the masked backend is
+        intentionally a compile-time error. This prevents an unmasked fallback
+        from being mistaken for protection. A security claim will require the
+        paper-faithful gadgets, their fresh-randomness schedule, optimized
+        assembly inspection, and leakage evaluation on each target.
+      </p>
+      <p>
+        See the project’s <a href="security.md">security status</a> for the
+        precise claims made and not made by this checkpoint.
+      </p>
+    </section>
+
+    <section id="roadmap" class="scope" aria-labelledby="roadmap-title">
+      <h2 id="roadmap-title">The path from reference to masked sampler</h2>
       <ol>
-        <li>Scalar, unmasked Maskaglia reference</li>
-        <li>Distribution and rejection-rate tests</li>
-        <li>Baseline benchmark</li>
-        <li>32-way <code>uint32_t</code> bitslicing</li>
-        <li>Masked implementation and side-channel evaluation</li>
+        <li>Regenerate and pin the paper’s parameter data, then add a certified MPFR interval oracle.</li>
+        <li>Implement the exact finite proxy and integer Bernoulli path.</li>
+        <li>Build paper-faithful <code>SecAND</code>, <code>SecEq</code>, <code>SecGeom</code>, and <code>SecDLX</code> gadgets with gate and randomness counters.</li>
+        <li>Use a fixed public batching schedule and oblivious movement for accepted lanes.</li>
+        <li>Specialize share counts, inspect compiler output, and evaluate portable, AVX2, Cortex-M4, and RV32 backends.</li>
+        <li>Integrate only through a share-aware consumer boundary.</li>
       </ol>
       <p>
-        HAWK integration and architecture-specific optimization are outside the
-        initial standalone milestone.
+        The detailed sequence and completion criteria are maintained in the
+        <a href="roadmap.md">project roadmap</a>.
       </p>
+    </section>
+
+    <section id="hawk" aria-labelledby="hawk-title">
+      <h2 id="hawk-title">HAWK is a research benchmark, not a deployment target</h2>
+      <p>
+        The scalar reference implements and tests the representation map
+        <span class="formula">x = 2z − t</span> used to move a sample centered
+        at <var>t</var>/2 into HAWK’s parity coset. The HAWK adapter itself is
+        disabled, and the core has no HAWK dependency.
+      </p>
+      <p>
+        HAWK was withdrawn from NIST’s additional-signature process on July 29,
+        2026 following a newly reported key-recovery attack. It remains here to
+        reproduce and evaluate the Maskaglia paper, not to support a live
+        standardization or deployment claim. The rational <var>s</var> = 3/2
+        used in checkpoint tests is a mathematical fixture, not a production
+        HAWK parameter.
+      </p>
+    </section>
+
+    <section id="resources" aria-labelledby="resources-title">
+      <h2 id="resources-title">Documentation and sources</h2>
+      <div class="resource-grid">
+        <div class="resource-card">
+          <h3>Project notes</h3>
+          <ul>
+            <li><a href="design.md">Design and API boundaries</a></li>
+            <li><a href="security.md">Security status</a></li>
+            <li><a href="roadmap.md">Implementation roadmap</a></li>
+            <li><a href="sources.md">Pinned source ledger</a></li>
+            <li><a href="refs.bib">Bibliography</a></li>
+          </ul>
+        </div>
+        <div class="resource-card">
+          <h3>Primary references</h3>
+          <ul>
+            <li><a href="https://eprint.iacr.org/2026/988">Maskaglia paper, ePrint 2026/988</a></li>
+            <li><a href="https://hawk-sign.info/hawk-spec.pdf">HAWK v1.1 specification</a></li>
+            <li><a href="https://github.com/hawk-sign/dev">Official HAWK C99 implementation</a></li>
+            <li><a href="https://csrc.nist.gov/projects/pqc-dig-sig/round-3-additional-signatures">NIST additional-signatures status</a></li>
+            <li><a href="https://eprint.iacr.org/2024/1248">Power-analysis motivation, ePrint 2024/1248</a></li>
+          </ul>
+        </div>
+      </div>
     </section>
 
     <p class="paper-link">
@@ -157,7 +255,7 @@
 
   <footer>
     <span>Fast Secure Gaussian Sampling</span>
-    <span>Early-stage research software</span>
+    <span>Checkpoint 1 · correctness base · not production cryptography</span>
   </footer>
 </body>
 </html>
