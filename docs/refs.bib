@@ -1,6 +1,6 @@
 @misc{aeht26,
   author       = {Calvin Abou Haidar and Thomas Espitau and
-                  Cl\'{e}ment Hoffmann and Mehdi Tibouchi},
+                  Cl{\'e}ment Hoffmann and Mehdi Tibouchi},
   title        = {Maskaglia: A New, Efficient Approach to Masked Discrete
                   Gaussian Sampling},
   howpublished = {Cryptology ePrint Archive, Paper 2026/988},
@@ -8,60 +8,95 @@
   url          = {https://eprint.iacr.org/2026/988}
 }
 
+@misc{maskagliasupp,
+  author = {Abou Haidar, Calvin and Espitau, Thomas and Hoffmann, Cl{\'e}ment
+            and Tibouchi, Mehdi},
+  title  = {Maskaglia Supplementary Implementation and Parameter Scripts},
+  year   = {2026},
+  note   = {Commit 1342642aae6e3588e8fa1d18869803d394473c70},
+  url    = {https://github.com/shhun/unmaskaglia/tree/1342642aae6e3588e8fa1d18869803d394473c70}
+}
+
+@article{cs20,
+  author  = {Ga{\"e}tan Cassiers and Fran{\c{c}}ois-Xavier Standaert},
+  title   = {Trivially and Efficiently Composing Masked Gadgets With Probe
+             Isolating Non-Interference},
+  journal = {IEEE Transactions on Information Forensics and Security},
+  volume  = {15},
+  pages   = {2542--2555},
+  year    = {2020},
+  doi     = {10.1109/TIFS.2020.2971153},
+  url     = {https://doi.org/10.1109/TIFS.2020.2971153}
+}
+
+@article{abc23,
+  author  = {Melissa Azouaoui and Olivier Bronchain and Ga{\"e}tan Cassiers
+             and Cl{\'e}ment Hoffmann and Yulia Kuzovkova and Joost Renes and
+             Tobias Schneider and Markus Sch{\"o}nauer and
+             Fran{\c{c}}ois-Xavier Standaert and Christine van Vredendaal},
+  title   = {Protecting {Dilithium} against Leakage Revisited: Sensitivity
+             Analysis and Improved Implementations},
+  journal = {IACR Transactions on Cryptographic Hardware and Embedded Systems},
+  volume  = {2023},
+  number  = {4},
+  pages   = {58--79},
+  year    = {2023},
+  doi     = {10.46586/tches.v2023.i4.58-79},
+  url     = {https://doi.org/10.46586/tches.v2023.i4.58-79}
+}
+
+@article{bc22,
+  author  = {Olivier Bronchain and Ga{\"e}tan Cassiers},
+  title   = {Bitslicing Arithmetic/Boolean Masking Conversions for Fun and
+             Profit with Application to Lattice-Based {KEMs}},
+  journal = {IACR Transactions on Cryptographic Hardware and Embedded Systems},
+  volume  = {2022},
+  number  = {4},
+  pages   = {553--588},
+  year    = {2022},
+  doi     = {10.46586/tches.v2022.i4.553-588},
+  url     = {https://eprint.iacr.org/2022/158}
+}
+
 @misc{hawk11,
-  author = {{HAWK team}},
-  title  = {{HAWK} v1.1},
+  author = {Joppe W. Bos and Olivier Bronchain and L{\'e}o Ducas and
+            Serge Fehr and Yu-Hsuan Huang and Thomas Pornin and
+            Eamonn W. Postlethwaite and Thomas Prest and Ludo N. Pulles and
+            Wessel van Woerden},
+  title  = {{HAWK} v1.1 Specification},
   year   = {2025},
   url    = {https://hawk-sign.info/hawk-spec.pdf}
 }
 
 @misc{hawkdev,
   author = {{HAWK team}},
-  title  = {Official {HAWK} C99 implementation},
+  title  = {Official {HAWK} {C99} Implementation},
   note   = {Commit 1b9fef52559273fe7b40fe3e22968eaedd3a4c2a},
   url    = {https://github.com/hawk-sign/dev/tree/1b9fef52559273fe7b40fe3e22968eaedd3a4c2a}
 }
 
-@misc{maskagliasupp,
-  author = {{Maskaglia authors}},
-  title  = {Maskaglia supplementary implementation and parameter scripts},
+@misc{mlkemnative,
+  author = {{PQ Code Package project}},
+  title  = {mlkem-native: Secure, Fast, Portable {C90} Implementation of
+            {ML-KEM}},
   year   = {2026},
-  note   = {Commit 1342642aae6e3588e8fa1d18869803d394473c70},
-  url    = {https://github.com/shhun/unmaskaglia/tree/1342642aae6e3588e8fa1d18869803d394473c70}
+  note   = {Commit 69d24e37b8a04c6050ec55bc84a4228d7051bb4b},
+  url    = {https://github.com/pq-code-package/mlkem-native/tree/69d24e37b8a04c6050ec55bc84a4228d7051bb4b}
 }
 
 @misc{nisthawkwithdrawal,
   author = {{National Institute of Standards and Technology}},
   title  = {Round 3 Additional Signatures},
   year   = {2026},
-  note   = {Updated July 29, 2026},
+  note   = {HAWK withdrawal status updated July 29, 2026},
   url    = {https://csrc.nist.gov/projects/pqc-dig-sig/round-3-additional-signatures}
 }
 
-@misc{hawkforumwithdrawal,
-  author = {{HAWK team}},
-  title  = {{HAWK} attack and withdrawal discussion},
-  year   = {2026},
-  howpublished = {NIST PQC Forum},
-  url    = {https://groups.google.com/a/list.nist.gov/g/pqc-forum/c/2r2u6SbHun4}
-}
-
 @misc{guerreaurossi24,
-  author       = {Fran{ç}ois Guerreau and Mélissa Rossi},
+  author       = {Fran{\c{c}}ois Guerreau and M{\'e}lissa Rossi},
   title        = {Breaking {HAWK}: How a Single Power Consumption Trace Leads
                   to Full Key Recovery},
   howpublished = {Cryptology ePrint Archive, Paper 2024/1248},
   year         = {2024},
   url          = {https://eprint.iacr.org/2024/1248}
-}
-
-@inproceedings{isw03,
-  author    = {Yuval Ishai and Amit Sahai and David Wagner},
-  title     = {Private Circuits: Securing Hardware against Probing Attacks},
-  booktitle = {CRYPTO 2003},
-  series    = {LNCS},
-  volume    = {2729},
-  pages     = {463--481},
-  year      = {2003},
-  doi       = {10.1007/978-3-540-45146-4_27}
 }

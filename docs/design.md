@@ -1,68 +1,95 @@
-# design
+# Design
 
-## boundary
+## Boundary
 
-the core library owns sampling. scheme adapters depend on the core, never the
-other way around.
+The sampler is generic. It knows fixed public Gaussian profiles, random-bit
+streams, and Boolean shares; it does not know keys, signatures, or secret center
+derivation.
 
 ```text
-rng + params -> scalar ref
-             -> portable bitslice core -> architecture backend
-                                      -> scheme adapter
+generated profile + sampler coins
+              │
+       scalar reference
+              │
+       portable 32-lane sampler ── Boolean-shared samples
+              │
+       scheme adapter ── masked select / representation mapping
 ```
 
-the scalar API may return ordinary integers because it is explicitly unmasked.
-the future masked API must keep outputs as bit planes of boolean shares. it must
-not unmask into `int16_t *` before the scheme consumes the sample.
+All global names use the `pqsamp_` namespace. The library has no allocator or
+hidden random source. Public argument validation occurs at the API boundary;
+internal helpers operate on already checked fixed-size values.
 
-## rng contract
+## Corrected finite sampler
 
-`mg_read_fn` either fills the full requested buffer or fails. the library:
+The implementation follows Maskaglia Algorithms 5/6, with three corrections
+required by the published text and supplement:
 
-- decodes source bytes little-endian;
-- consumes the least-significant bit first;
-- caches 64 bits at a time;
-- propagates source failure through a sticky error;
-- counts consumed bits;
-- returns a sticky `MG_EBOUND` instead of clipping a long geometric value.
+1. Proposal geometry is conditional, while acceptance geometry is saturated.
+   They are different distributions. An all-zero proposal word is rejected; an
+   all-zero `Ksat`-bit acceptance word maps to `Ksat`.
+2. The stored boundary value is the acceptance count
+   `A=floor(2^pU (2^(1-r/K0)-1))`; equality accepts on `U<A`.
+3. The runtime decision is exactly `K<q` reject, `K>q` accept, and `K=q`
+   boundary coin. It does not transcribe Algorithm 13's reversed expression.
 
-after `MG_ERNG` or geometric `MG_EBOUND`, the context is terminal and must be
-reinitialized. this avoids treating the remainder of a failed unary code as a
-fresh sample.
+The proposal tables fuse the public functions of the first-one position:
+two's-complement `y`, quotient `q`, boundary count `A`, and support validity.
+The implementation scans every public row and masked-selects its constants. It
+never indexes a table with the reconstructed proposal or side bit.
 
-`gmax` and `tries` are public failure bounds, not a certified truncation policy.
-an over-bound call produces no sample. callers must not silently reinitialize
-and retry while describing the resulting conditional distribution as exact;
-the total failure and tail analysis is checkpoint 3 work.
+## Masked words
 
-the geometric hot path scans one word with `ctz`, not one branch per zero.
+A `pqsamp_word` is one bit plane across 32 lanes. Each plane has `d` Boolean
+shares, `1 <= d <= 4`:
 
-sampler coins and fresh masking randomness will use separate contexts in the
-masked API. domain separation and freshness rules belong in that API contract.
+```text
+value = share[0] xor ... xor share[d-1]
+```
 
-## rational exponent
+NOT changes only share zero. XOR and selection by a public lane mask are
+sharewise. `pqsamp_sec_and()` retains the intermediate structure of CS20
+Algorithm 2 and consumes `d(d-1)/2` fresh words. Compiler value barriers are
+placed around the protected intermediates; the function is not inlined.
 
-`mg_ref_exp()` avoids signed absolute-value traps and checks every potentially
-overflowing multiplication. its reduced fraction makes differential tests easy
-and gives the parameter generator an exact target.
+Equality OR-reduces bit planes with secure AND. Unsigned comparison uses the
+full-subtractor borrow recurrence from least to most significant bit. Public
+decisions are pairwise-refreshed before shares are recombined.
 
-## bitslice layout
+Sampler coins create the underlying uniform values. A distinct masking stream
+creates the input shares, secure-AND randomness, and refresh randomness. The API
+rejects the same RNG object or the same callback/context pair; callers must also
+guarantee cryptographic independence for distinct contexts.
 
-`mg_pack16()` maps bit `b` of lane `i` to bit `i` of word `b`. the implementation
-uses a 32 by 32 SWAR transpose, with the unused upper 16 input bits zero. packing
-and unpacking stay outside the future hot sampling loop.
+## Scheduling
 
-## next implementation slice
+One internal invocation produces 32 candidates. For every output block of at
+most 32 values, the public API always executes four invocations (128
+candidates). Every candidate scans every destination slot and is selected with
+a word mask. The loop counts and memory addresses therefore do not depend on
+the refreshed public acceptance masks or proposal values.
 
-1. reproduce the paper's public parameter-generation script and hashes;
-2. add a certified MPFR interval oracle under `tools/`;
-3. transcribe and test the exact finite proxy distribution;
-4. implement one paper-faithful `SecAND`, then `SecEq` and `SecGeom`;
-5. differential-test every bitsliced lane against the scalar proposal;
-6. design a fixed public batch schedule for rejected lanes;
-7. specialize the share count at compile time;
-8. inspect optimized assembly before adding AVX2 or Cortex-M4 code;
-9. integrate behind a share-aware scheme adapter.
+The slowest profile's fully formed candidate acceptance is about `0.72084`.
+The implementation also treats the rare invalid 14-bit proposal encodings as
+candidate rejection, giving a conservative block failure below `2^-94`. The
+failure bound for `m` blocks is at most `m * 2^-94`. A failure returns
+`PQSAMP_ERR_BOUND` and zeroes the complete output.
 
-the HAWK adapter remains useful for reproducing the Maskaglia paper, but HAWK's
-2026 withdrawal means it is no longer the only product-level destination.
+The running public rank still depends on declassified rejection data. In the
+paper's model, the number and positions of rejected independent candidates do
+not reveal the eventual accepted sample. This is a model assumption, not
+physical-leakage evidence or a statement about compiler output.
+
+## Adapter
+
+The HAWK-shaped adapter demonstrates the intended consumer boundary. It draws
+both public centers, packs both shared outputs, and selects each plane with
+
+```text
+z = z0 xor (center & (z0 xor zhalf)).
+```
+
+It then computes `x=2z-center` with a masked borrow chain and returns Boolean
+shares. It does not reconstruct the center or sample. The adapter is useful to
+any scheme with the same two-center representation, but it is not a full masked
+HAWK signing implementation.

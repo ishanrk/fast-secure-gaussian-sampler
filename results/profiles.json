@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "method": "inclusive support [-13,13], floor boundary thresholds, exact K saturation",
+  "mpfr_precision_bits": 512,
+  "renyi_order": 256,
+  "ideal_normalizer_range": [-1024, 1024],
+  "outputs_per_block": 32,
+  "candidates_per_block": 128,
+  "profiles": [
+    {
+      "s": "3/2",
+      "center": "0",
+      "sigma": "1.2739827004320286",
+      "k_sat": 63,
+      "threshold_bits": 45,
+      "estimated_renyi_bits": "87.0105",
+      "raw_candidate_acceptance": "0.7207801827980715",
+      "block_failure_log2": "-94.3657"
+    },
+    {
+      "s": "3/2",
+      "center": "1/2",
+      "sigma": "1.2739827004320286",
+      "k_sat": 69,
+      "threshold_bits": 43,
+      "estimated_renyi_bits": "82.5025",
+      "raw_candidate_acceptance": "0.7645028325020456",
+      "block_failure_log2": "-115.6042"
+    },
+    {
+      "s": "1521/1000",
+      "center": "0",
+      "sigma": "1.2918184582380770",
+      "k_sat": 61,
+      "threshold_bits": 45,
+      "estimated_renyi_bits": "85.3386",
+      "raw_candidate_acceptance": "0.7228802869050787",
+      "block_failure_log2": "-95.2942"
+    },
+    {
+      "s": "1521/1000",
+      "center": "1/2",
+      "sigma": "1.2918184582380770",
+      "k_sat": 66,
+      "threshold_bits": 43,
+      "estimated_renyi_bits": "80.3455",
+      "raw_candidate_acceptance": "0.7667303292849444",
+      "block_failure_log2": "-116.8059"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+BasedOnStyle: Google
+BreakBeforeBraces: Allman
+ColumnLimit: 80
+DerivePointerAlignment: false
+IndentWidth: 2
+PointerAlignment: Right
+UseTab: Never
+

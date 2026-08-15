@@ -1,46 +1,37 @@
-# roadmap
+# Roadmap
 
-## checkpoint 1: correctness base
+## Portable software release
 
-- [x] C99 layout and strict build
-- [x] injected buffered rng
-- [x] fast bounded geometric decoder with explicit failure
-- [x] `c=0` and `c=1/2` Laplace proposal recipes without clipping
-- [x] checked rational exponent
-- [x] approximate scalar diagnostic sampler
-- [x] SWAR 32-lane pack/unpack
-- [x] deterministic, kernel, mapping, sanitizer, and statistical tests
+- [x] one C99 `pqsamp_` API with separate core and adapter archives
+- [x] exact-integer scalar sampler
+- [x] corrected finite profile tables and directed-rounding MPFR check
+- [x] 32-lane Boolean masking with 1--4 shares
+- [x] secure AND, equality, comparison, Bernoulli, geometry, and fused proposal
+- [x] fixed four-batch scheduling and fixed-address accepted-lane selection
+- [x] share-aware two-center adapter and working demos
+- [x] compact deterministic/statistical/adapter tests
+- [x] sanitizer, Valgrind, fuzz, CBMC, GCC/Clang, M4, and RV32 build targets
 
-## checkpoint 2: paper-faithful masked core
+## Evidence and native optimization
 
-- [ ] vendor or regenerate the paper's parameter data
-- [ ] certified MPFR oracle
-- [ ] exact finite proxy and Bernoulli path
-- [ ] paper-faithful `SecAND`, `SecEq`, `SecGeom`, and `SecDLX`
-- [ ] gate/randomness counters
-- [ ] differential lane tests for two, three, and four shares
+- [ ] interval certificate covering the full Gaussian normalizer, tail,
+  boundary quantization, width approximation, and multi-call composition
+- [ ] an AVX2 sampler instantiated over vector words and measured against the
+  portable backend
+- [ ] Cortex-M4 and RV32 board cycle, flash, stack, and randomness measurements
+- [ ] compiler/flag assembly corpus with reviewed branch, address, and spill
+  classifications
+- [ ] dudect-style timing experiments and reproducible raw records
+- [ ] physical leakage experiments on a named capture board
 
-## checkpoint 3: production scheduling
+## Scheme work
 
-- [ ] fixed public batching policy
-- [ ] oblivious accepted-lane movement
-- [ ] bounded failure analysis
-- [ ] zero heap embedded build
-- [ ] compile-time share-count specialization
-- [ ] assembly branch, address, and spill checks
+- [x] masked selection and `x=2y-t` adapter boundary
+- [ ] PINI-compatible Boolean-to-arithmetic conversion for a chosen consumer
+- [ ] masked downstream arithmetic and complete sign/verify integration
+- [ ] scheme-specific rational-width certificate and official interoperability
+  vectors
 
-## checkpoint 4: systems evaluation
-
-- [ ] portable u32 benchmark
-- [ ] AVX2 backend
-- [ ] Cortex-M4 backend
-- [ ] RV32 portability backend
-- [ ] compiler and flag matrix
-- [ ] dudect and physical leakage experiments
-- [ ] reproducible static results explorer
-
-## checkpoint 5: integrations
-
-- [ ] HAWK research adapter for paper reproduction
-- [ ] identify a still-relevant fixed-parameter consumer
-- [ ] upstream-quality patch where technically justified
+HAWK remains a useful research case, but the general sampler API is the project
+boundary. A new adapter should be added only for a fixed-public-profile PQC
+consumer whose downstream representation and leakage boundary are understood.
