@@ -24,6 +24,11 @@
   classifications
 - [ ] dudect-style timing experiments and reproducible raw records
 - [ ] physical leakage experiments on a named capture board
+- [ ] retuned profiles with a new independently checked error certificate
+- [ ] reconciliation of local gate counters with the paper's profile and
+  accounting conventions
+- [ ] complete formal composition of the implemented C scheduler, including
+  refreshed declassification, public compaction, caps, and output wiping
 
 ## Scheme work
 

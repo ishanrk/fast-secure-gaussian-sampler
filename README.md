@@ -95,12 +95,20 @@ tests/                  core sampler and adapter checks
 `make bench` emits JSON Lines for both centers on the scalar path and the
 portable masked path with one through four shares. On the built-in `s=3/2`
 profile, the zero-center side pool uses exactly one secure AND per raw
-Bernoulli batch. The pinned trace uses 1,914 raw side batches, 1,432 stage-one
-batches, and 1,258 stage-two batches: `203370 / 32768 = 6.206359863` secure AND
-calls per output. The half-center path postpones `Y` reconstruction until final
-acceptance and uses exactly `183188 / 32768 = 5.5904541015625` secure AND calls
-per output on the pinned benchmark trace. Host wall time is diagnostic only;
-there are no AVX2 results or board cycle claims.
+Bernoulli batch. Its analytic expectation is about `6.153732` secure AND calls
+per output. Across 256 independent 32,768-sample runs, the observed mean was
+`6.165533`, with a range of `6.120667` to `6.210724`. The pinned trace uses
+1,914 raw side batches, 1,432 stage-one batches, and 1,258 stage-two batches:
+`203370 / 32768 = 6.206359863` secure AND calls per output. This individual
+trace is not a regression threshold.
+
+The half-center path postpones `Y` reconstruction until final acceptance. Its
+pinned trace uses exactly `183188 / 32768 = 5.5904541015625` secure AND calls
+per output; 256 independent runs had mean `5.594260` and range `5.560944` to
+`5.631226`. The paper's `4.0` and `4.9` figures use different profiles and
+accounting, so they are comparison figures rather than thresholds attained by
+this implementation. Host wall time is diagnostic only; there are no AVX2
+results or board cycle claims.
 
 ## Remaining work
 
@@ -109,6 +117,8 @@ there are no AVX2 results or board cycle claims.
 - measured AVX2 Cortex-M4 and RV32 implementations
 - Boolean-to-arithmetic conversion and masked downstream scheme arithmetic
 - physical leakage experiments and reproducible raw measurements
+- profile retuning and reconciliation with the paper's accounting model
+- a complete formal composition argument for the exact C scheduler
 
 ## Primary references
 

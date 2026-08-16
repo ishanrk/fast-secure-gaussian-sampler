@@ -71,13 +71,16 @@ Equality OR-reduces bit planes with secure AND. Unsigned comparison uses the
 full-subtractor borrow recurrence from least to most significant bit. Public
 decisions are pairwise-refreshed before shares are recombined.
 
-The side-pool validity trace is correlated with raw `U0`; no independence is
-claimed there. Conditional on the complete public validity/retry trace, every
-retained coordinate is still an independent Bernoulli `1/3` bit. `SecAnd`
-copies its inputs, the retained `U0` sharing is never recombined, compaction is
-sharewise and linear, and its next nonlinear use receives fresh gadget
-randomness. This relies on the project's CS20 PINI composition model and on
-independent sampler and masking streams; it is not a mechanized proof of the
+Raw validity is correlated with raw `U0`; no independence is claimed between
+those two values. Rejection sampling removes that correlation: conditional on
+the complete public validity/retry trace, every retained coordinate is still
+an independent Bernoulli `1/3` bit, so the public retry trace is independent of
+the eventual retained result. `SecAnd` copies its inputs, only refreshed
+validity is recombined, and the retained `U0` sharing is never reconstructed.
+Compaction applies the same public, stable permutation to every share, and the
+coordinate's next nonlinear use receives fresh gadget randomness. This relies
+on the project's CS20 PINI composition model and on independent sampler and
+masking streams; it is not a mechanized proof of the exact C scheduler or its
 compiled program.
 
 Sampler coins create the underlying uniform values. A distinct masking stream
@@ -134,6 +137,11 @@ inherited failure bound for `m=ceil(n/32)` blocks is at most `m * 2^-94`; this
 is deliberately not presented as a tighter pooled bound. A failure returns
 `PQSAMP_ERR_BOUND` and zeroes the complete output.
 
+Subject to the stated independent-randomness, declassification, and PINI
+composition assumptions, successful calls preserve the compiled finite target
+distribution. The finite scheduler and side-pool caps add only their explicit
+bounded failure modes; they do not substitute a biased fallback value.
+
 In the paper's model, the number and positions of rejected independent
 candidates and the stopping time are public, as allowed by Remark 3. This
 scheduler is invalid when a secret parameter selects the sampler execution. A
@@ -155,3 +163,8 @@ It then computes `x=2z-center` with a masked borrow chain and returns Boolean
 shares. It does not reconstruct the center or sample. The adapter is useful to
 any scheme with the same two-center representation, but it is not a full masked
 HAWK signing implementation.
+
+The paper's `4.0` and `4.9` gate figures use different profiles and accounting.
+They are useful comparison points, not regression thresholds for these tables.
+Profile retuning, reconciliation with that accounting, and a complete formal
+composition proof of this scheduler remain separate research tasks.

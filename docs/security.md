@@ -33,7 +33,14 @@ parameters. A secret-center scheme must run both public-center samplers.
 
 Compaction applies one public lane permutation independently to every share of
 every candidate field. This preserves Boolean sharing, but its branches and
-memory addresses depend on the declassified survivor and acceptance masks.
+memory addresses depend on refreshed, declassified survivor and acceptance
+masks. The permutation is stable and identical for every share.
+
+Under the independent-randomness, declassification, and PINI composition
+assumptions above, successful calls retain the compiled finite target
+distribution. Finite retry caps create explicit bounded failures, never an
+alternate output distribution. This statement is not a complete
+machine-checked composition proof of the exact C scheduler.
 
 This describes source structure. It is not a side-channel certification.
 Compiler transformations, instruction transitions, spills, register
@@ -54,6 +61,7 @@ zero-center scheduler frame grew by 48 bytes for its 36-byte pool. Summing the
 deepest reported library frames gives a conservative 5,192-byte zero-center
 path, down from the previous 5,816-byte estimate because the large rational
 Bernoulli retry frame is no longer on that path. Callback stack is not included.
+The corresponding half-center path is 4,632 bytes, below its 5,584-byte limit.
 The adapter has a separate bounded 2,000-byte frame.
 `make stack` reproduces compiler frame reports; embedded limits still require
 target linking and measurement.
@@ -67,6 +75,8 @@ target linking and measurement.
 - No complete masked HAWK signer or Boolean-to-arithmetic conversion.
 - No claim that the research widths equal HAWK v1.1 parameters.
 - No approval beyond the four compiled research profiles.
+- No claim that the paper's `4.0` and `4.9` comparison figures are attained;
+  they use different profiles and accounting.
 
 Accepted-lane addresses depend on the refreshed and declassified acceptance
 mask. Pending-batch addresses likewise depend on the declassified stage-one
@@ -87,3 +97,6 @@ not be silently converted into output.
 
 Invalid pointer arguments are API precondition failures. They do not authorize
 dereferencing an output solely to clear it.
+
+Profile retuning, reconciliation with the paper's gate accounting, and formal
+composition of the complete C scheduler remain research work.
