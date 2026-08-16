@@ -6,6 +6,7 @@
 #include "pqsamp_hawk.h"
 #include "test.h"
 
+// compares adapter output with direct center sampling
 static int adapter(unsigned shares)
 {
   enum
@@ -93,6 +94,7 @@ static int adapter(unsigned shares)
   return 0;
 }
 
+// runs the adapter check for every masked share count
 int main(void)
 {
   unsigned shares;

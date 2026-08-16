@@ -1,5 +1,6 @@
 #include "internal.h"
 
+// loads one little endian word
 static uint64_t load64(const uint8_t src[8])
 {
   uint64_t value = 0;
@@ -12,6 +13,7 @@ static uint64_t load64(const uint8_t src[8])
   return value;
 }
 
+// fills the rng bit buffer
 static int refill(pqsamp_rng *rng)
 {
   uint8_t bytes[8];
@@ -26,6 +28,7 @@ static int refill(pqsamp_rng *rng)
   return PQSAMP_OK;
 }
 
+// starts a caller owned rng stream
 int pqsamp_rng_init(pqsamp_rng *rng, pqsamp_randombytes randombytes,
                     void *context)
 {
@@ -42,6 +45,7 @@ int pqsamp_rng_init(pqsamp_rng *rng, pqsamp_randombytes randombytes,
   return PQSAMP_OK;
 }
 
+// reads up to 32 low bits from the stream
 int pqsamp_rng_bits(pqsamp_rng *rng, unsigned count, uint32_t *value)
 {
   uint32_t out = 0;
@@ -85,11 +89,13 @@ int pqsamp_rng_bits(pqsamp_rng *rng, unsigned count, uint32_t *value)
   return PQSAMP_OK;
 }
 
+// reads one 32 bit word from the stream
 int pqsamp_rng_word(pqsamp_rng *rng, uint32_t *value)
 {
   return pqsamp_rng_bits(rng, 32U, value);
 }
 
+// reads up to 64 low bits from the stream
 int pqsamp_rng_bits64(pqsamp_rng *rng, unsigned count, uint64_t *value)
 {
   uint32_t low;
@@ -117,6 +123,7 @@ int pqsamp_rng_bits64(pqsamp_rng *rng, unsigned count, uint64_t *value)
   return PQSAMP_OK;
 }
 
+// returns a short error message
 const char *pqsamp_strerror(int error)
 {
   switch (error)

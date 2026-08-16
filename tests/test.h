@@ -24,6 +24,7 @@ typedef struct
   size_t fail_after;
 } test_rng;
 
+// advances one deterministic test stream
 static uint64_t test_next(test_rng *rng)
 {
   uint64_t value = rng->state;
@@ -35,6 +36,7 @@ static uint64_t test_next(test_rng *rng)
   return value * UINT64_C(2685821657736338717);
 }
 
+// fills bytes and can fail at one chosen call
 static int test_randombytes(void *context, uint8_t *out, size_t size)
 {
   test_rng *rng = context;
@@ -56,6 +58,7 @@ static int test_randombytes(void *context, uint8_t *out, size_t size)
   return 0;
 }
 
+// creates one deterministic test stream
 static test_rng test_rng_make(uint64_t seed)
 {
   test_rng rng;
@@ -66,6 +69,7 @@ static test_rng test_rng_make(uint64_t seed)
   return rng;
 }
 
+// xors active shares into one signed sample
 static inline int16_t test_reconstruct(const pqsamp_masked_i16 *value,
                                        unsigned shares)
 {

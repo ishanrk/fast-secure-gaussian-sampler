@@ -3,6 +3,7 @@
 
 #include "pqsamp.h"
 
+// fills bytes from an open random device
 static int randombytes(void *context, uint8_t *out, size_t n)
 {
   FILE *stream = context;
@@ -10,6 +11,7 @@ static int randombytes(void *context, uint8_t *out, size_t n)
   return fread(out, 1, n, stream) == n ? 0 : -1;
 }
 
+// prints scalar samples and runs one masked sample call
 int main(void)
 {
   pqsamp_masked_i16 masked[8];

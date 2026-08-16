@@ -27,6 +27,7 @@ static const oracle_expected expected_results[2][2] = {
     {{"0.7228802869050787", "-95.2942", "85.3386"},
      {"0.7667303292849444", "-116.8059", "80.3455"}}};
 
+// finds the greatest common divisor
 static uint64_t gcd_u64(uint64_t left, uint64_t right)
 {
   while (right != 0U)
@@ -39,6 +40,7 @@ static uint64_t gcd_u64(uint64_t left, uint64_t right)
   return left;
 }
 
+// multiplies two words and reports overflow
 static int mul_checked(uint64_t left, uint64_t right, uint64_t *out)
 {
   if (left != 0U && right > UINT64_MAX / left)
@@ -49,6 +51,7 @@ static int mul_checked(uint64_t left, uint64_t right, uint64_t *out)
   return 0;
 }
 
+// copies one integer into an mpfr value
 static int set_u64(mpfr_t out, uint64_t value)
 {
   char text[32];
@@ -60,6 +63,7 @@ static int set_u64(mpfr_t out, uint64_t value)
   return mpfr_set_str(out, text, 10, MPFR_RNDN);
 }
 
+// returns the integer floor of an mpfr value
 static int get_floor(const mpfr_t value, uint64_t *out)
 {
   char text[32];
@@ -72,6 +76,7 @@ static int get_floor(const mpfr_t value, uint64_t *out)
   return 0;
 }
 
+// recomputes one exact boundary count
 static int boundary_count(uint64_t residue, uint64_t k0, unsigned bits,
                           uint64_t *out)
 {
@@ -119,6 +124,7 @@ cleanup:
   return ret;
 }
 
+// returns the integer below the profile center
 static int64_t center_floor(const pqsamp_params *params)
 {
   int64_t numerator = params->center_num;
@@ -132,6 +138,7 @@ static int64_t center_floor(const pqsamp_params *params)
   return result;
 }
 
+// computes the accepted mass for one table row
 static int candidate_mass(mpfr_t out, const pqsamp_candidate *entry,
                           const pqsamp_params *params, unsigned side,
                           unsigned geometric)
@@ -170,6 +177,7 @@ cleanup:
   return ret;
 }
 
+// computes the chance that one fixed batch cap fails
 static void block_failure(mpfr_t out, const mpfr_t acceptance)
 {
   mpfr_t rejected;
@@ -199,6 +207,7 @@ static void block_failure(mpfr_t out, const mpfr_t acceptance)
   mpfr_clear(rejected);
 }
 
+// computes one ideal gaussian weight
 static void ideal_weight(mpfr_t out, const pqsamp_params *params, int y)
 {
   int64_t distance = (int64_t)y * params->center_den - params->center_num;
@@ -215,6 +224,7 @@ static void ideal_weight(mpfr_t out, const pqsamp_params *params, int y)
   mpfr_exp2(out, out, MPFR_RNDN);
 }
 
+// computes the renyi gap from the ideal profile
 static int renyi_bound(mpfr_t out, mpfr_t mass[PQSAMP_ORACLE_SUPPORT],
                        const mpfr_t total, const pqsamp_params *params)
 {
@@ -300,6 +310,7 @@ cleanup:
   return ret;
 }
 
+// checks every metric for one compiled profile
 static int metrics(const pqsamp_params *params, const oracle_expected *expected,
                    mpfr_t acceptance, mpfr_t failure, mpfr_t renyi)
 {
@@ -372,6 +383,7 @@ cleanup:
   return ret;
 }
 
+// checks all rows and metrics for one profile center
 static int check_profile(pqsamp_profile profile, pqsamp_center center)
 {
   const pqsamp_params *params = pqsamp_profile_get(profile, center);
@@ -495,6 +507,7 @@ static int check_profile(pqsamp_profile profile, pqsamp_center center)
   return ret;
 }
 
+// checks every compiled profile with mpfr
 int main(void)
 {
   unsigned profile;

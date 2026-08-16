@@ -1,5 +1,6 @@
 #include "internal.h"
 
+// transposes 32 words into 32 bit planes
 static void transpose32(uint32_t value[PQSAMP_LANES])
 {
   uint32_t mask = UINT32_C(0x0000ffff);
@@ -25,6 +26,7 @@ static void transpose32(uint32_t value[PQSAMP_LANES])
   }
 }
 
+// packs 32 shared samples into bit planes
 void pqsamp_pack16(pqsamp_word out[PQSAMP_VALUE_BITS],
                    const pqsamp_masked_i16 in[PQSAMP_LANES], unsigned shares)
 {
@@ -55,6 +57,7 @@ void pqsamp_pack16(pqsamp_word out[PQSAMP_VALUE_BITS],
   }
 }
 
+// unpacks bit planes into 32 shared samples
 void pqsamp_unpack16(pqsamp_masked_i16 out[PQSAMP_LANES],
                      const pqsamp_word in[PQSAMP_VALUE_BITS], unsigned shares)
 {

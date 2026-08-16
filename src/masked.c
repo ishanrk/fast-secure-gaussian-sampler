@@ -1,5 +1,6 @@
 #include "internal.h"
 
+// finds the first set lane
 static unsigned ctz32(uint32_t x)
 {
 #if defined(__GNUC__) || defined(__clang__)
@@ -16,6 +17,7 @@ static unsigned ctz32(uint32_t x)
 #endif
 }
 
+// clears a zero center candidate batch
 static void batch_zero(pqsamp_batch *batch)
 {
   unsigned i;
@@ -35,6 +37,7 @@ static void batch_zero(pqsamp_batch *batch)
   }
 }
 
+// clears a half center g and side value
 static void half_value_zero(pqsamp_half_value *value)
 {
   unsigned i;
@@ -46,6 +49,7 @@ static void half_value_zero(pqsamp_half_value *value)
   pqsamp_word_zero(&value->side);
 }
 
+// clears a half center candidate batch
 static void half_batch_zero(pqsamp_half_batch *batch)
 {
   unsigned i;
@@ -62,6 +66,7 @@ static void half_batch_zero(pqsamp_half_batch *batch)
   }
 }
 
+// copies one lane across shared bit planes
 static void copy_lane(pqsamp_word *out, const pqsamp_word *in, unsigned words,
                       unsigned dst, unsigned src, unsigned shares)
 {
@@ -81,6 +86,7 @@ static void copy_lane(pqsamp_word *out, const pqsamp_word *in, unsigned words,
   }
 }
 
+// moves live zero center lanes into free batch lanes
 uint32_t pqsamp_compact_batch(pqsamp_batch *out, unsigned *filled,
                               const pqsamp_batch *in, uint32_t live,
                               unsigned shares)
@@ -101,6 +107,7 @@ uint32_t pqsamp_compact_batch(pqsamp_batch *out, unsigned *filled,
   return live;
 }
 
+// moves live half center lanes into free batch lanes
 uint32_t pqsamp_compact_half_batch(pqsamp_half_batch *out, unsigned *filled,
                                    const pqsamp_half_batch *in, uint32_t live,
                                    unsigned shares)
@@ -123,6 +130,7 @@ uint32_t pqsamp_compact_half_batch(pqsamp_half_batch *out, unsigned *filled,
   return live;
 }
 
+// appends accepted zero center samples to output
 static void append_accepted(pqsamp_masked_i16 *out, size_t n, size_t *written,
                             const pqsamp_batch *batch, uint32_t accept,
                             unsigned shares)
@@ -140,6 +148,7 @@ static void append_accepted(pqsamp_masked_i16 *out, size_t n, size_t *written,
   }
 }
 
+// finishes and copies one zero center batch
 static int finish_pending(pqsamp_state *state, pqsamp_masked_i16 *out, size_t n,
                           size_t *written, const pqsamp_batch *pending,
                           uint32_t active, const pqsamp_params *params,
@@ -160,6 +169,7 @@ static int finish_pending(pqsamp_state *state, pqsamp_masked_i16 *out, size_t n,
   return PQSAMP_OK;
 }
 
+// fills zero center output from bounded batches
 static int sample_full(pqsamp_masked_i16 *out, size_t n, pqsamp_state *state,
                        const pqsamp_params *params, size_t max_batches,
                        pqsamp_trace *trace)
@@ -218,6 +228,7 @@ static int sample_full(pqsamp_masked_i16 *out, size_t n, pqsamp_state *state,
   return written == n ? PQSAMP_OK : PQSAMP_ERR_BOUND;
 }
 
+// reconstructs and writes accepted half center values
 static int flush_half(pqsamp_state *state, pqsamp_masked_i16 *out, size_t n,
                       size_t *written, pqsamp_half_value *fifo,
                       unsigned *filled, pqsamp_trace *trace)
@@ -251,6 +262,7 @@ static int flush_half(pqsamp_state *state, pqsamp_masked_i16 *out, size_t n,
   return PQSAMP_OK;
 }
 
+// stores accepted half center records until one flush
 static int append_half(pqsamp_state *state, pqsamp_masked_i16 *out, size_t n,
                        size_t *written, pqsamp_half_value *fifo,
                        unsigned *filled, const pqsamp_half_value *value,
@@ -283,6 +295,7 @@ static int append_half(pqsamp_state *state, pqsamp_masked_i16 *out, size_t n,
   return PQSAMP_OK;
 }
 
+// finishes one half center batch and queues accepted records
 static int finish_half_pending(pqsamp_state *state, pqsamp_masked_i16 *out,
                                size_t n, size_t *written,
                                pqsamp_half_value *fifo, unsigned *fifo_filled,
@@ -305,6 +318,7 @@ static int finish_half_pending(pqsamp_state *state, pqsamp_masked_i16 *out,
                      accept, trace);
 }
 
+// fills half center output from bounded batches
 static int sample_half(pqsamp_masked_i16 *out, size_t n, pqsamp_state *state,
                        const pqsamp_params *params, size_t max_batches,
                        pqsamp_trace *trace)
@@ -365,6 +379,7 @@ static int sample_half(pqsamp_masked_i16 *out, size_t n, pqsamp_state *state,
   return written == n ? PQSAMP_OK : PQSAMP_ERR_BOUND;
 }
 
+// runs the masked sampler and records internal counters
 int pqsamp_sample_masked_trace(pqsamp_masked_i16 *out, size_t n,
                                pqsamp_profile profile, pqsamp_center center,
                                unsigned shares, pqsamp_rng *coins,
@@ -447,6 +462,7 @@ int pqsamp_sample_masked_trace(pqsamp_masked_i16 *out, size_t n,
   return rc;
 }
 
+// returns boolean shared gaussian samples
 int pqsamp_sample_masked(pqsamp_masked_i16 *out, size_t n,
                          pqsamp_profile profile, pqsamp_center center,
                          unsigned shares, pqsamp_rng *coins, pqsamp_rng *masks,

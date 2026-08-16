@@ -5,6 +5,7 @@
 #include "internal.h"
 #include "test.h"
 
+// xors active shares into one lane word
 static uint32_t word_value(const pqsamp_word *word, unsigned shares)
 {
   uint32_t value = 0;
@@ -17,6 +18,7 @@ static uint32_t word_value(const pqsamp_word *word, unsigned shares)
   return value;
 }
 
+// splits one lane word into deterministic shares
 static void share_word(pqsamp_word *word, uint32_t value, unsigned shares,
                        uint32_t salt)
 {
@@ -39,6 +41,7 @@ typedef struct
   size_t offset;
 } byte_source;
 
+// fills bytes with an increasing test pattern
 static int byte_randombytes(void *context, uint8_t *out, size_t size)
 {
   byte_source *source = context;
@@ -56,6 +59,7 @@ static int byte_randombytes(void *context, uint8_t *out, size_t size)
   return 0;
 }
 
+// checks bit order refill and sticky rng failure
 static int rng_bits_order(void)
 {
   byte_source source = {{0x53, 0xa9, 0x1c, 0xe0, 0x72, 0x44, 0x8d, 0xf1, 0x3b,
@@ -73,6 +77,7 @@ static int rng_bits_order(void)
   return 0;
 }
 
+// checks every shared boolean gadget
 static int gadgets(unsigned shares)
 {
   test_rng mask_source = test_rng_make(UINT64_C(0x123456789abcdef));
@@ -135,6 +140,7 @@ static int gadgets(unsigned shares)
   return 0;
 }
 
+// checks pack and unpack on every bit lane pair
 static int bitslice(void)
 {
   pqsamp_masked_i16 input[PQSAMP_LANES];
@@ -159,6 +165,7 @@ static int bitslice(void)
   return 0;
 }
 
+// clears one zero center test batch
 static void batch_zero(pqsamp_batch *batch)
 {
   unsigned i;
@@ -178,6 +185,7 @@ static void batch_zero(pqsamp_batch *batch)
   }
 }
 
+// clears one half center test batch
 static void half_batch_zero(pqsamp_half_batch *batch)
 {
   unsigned i;
@@ -198,6 +206,7 @@ static void half_batch_zero(pqsamp_half_batch *batch)
   }
 }
 
+// writes one integer into one shared lane
 static void set_lane(pqsamp_word *word, unsigned words, unsigned lane,
                      unsigned share, uint64_t value)
 {
@@ -209,6 +218,7 @@ static void set_lane(pqsamp_word *word, unsigned words, unsigned lane,
   }
 }
 
+// reads one integer from one shared lane
 static uint64_t get_lane(const pqsamp_word *word, unsigned words, unsigned lane,
                          unsigned share)
 {
@@ -222,6 +232,7 @@ static uint64_t get_lane(const pqsamp_word *word, unsigned words, unsigned lane,
   return value;
 }
 
+// counts set lanes without compiler helpers
 static unsigned popcount32(uint32_t x)
 {
   unsigned count = 0;
@@ -234,6 +245,7 @@ static unsigned popcount32(uint32_t x)
   return count;
 }
 
+// removes and returns the first set lane
 static unsigned next_lane(uint32_t *mask)
 {
   unsigned lane = 0;
@@ -248,6 +260,7 @@ static unsigned next_lane(uint32_t *mask)
   return lane;
 }
 
+// checks zero center compaction for one lane mask
 static int compact_case(uint32_t mask, unsigned offset, unsigned shares)
 {
   pqsamp_batch in;
@@ -325,6 +338,7 @@ static int compact_case(uint32_t mask, unsigned offset, unsigned shares)
   return 0;
 }
 
+// checks half center compaction for one lane mask
 static int half_compact_case(uint32_t mask, unsigned offset, unsigned shares)
 {
   pqsamp_half_batch in;
@@ -410,6 +424,7 @@ static int half_compact_case(uint32_t mask, unsigned offset, unsigned shares)
   return 0;
 }
 
+// checks compaction patterns for every share count
 static int compaction(void)
 {
   static const uint32_t patterns[] = {0U,
@@ -458,6 +473,7 @@ static int compaction(void)
   return 0;
 }
 
+// runs rng gadget bitslice and compaction checks
 int main(void)
 {
   unsigned shares;

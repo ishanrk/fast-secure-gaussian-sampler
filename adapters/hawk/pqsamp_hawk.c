@@ -2,6 +2,7 @@
 
 #include "internal.h"
 
+// packs shared center bits into one plane
 static void pack_center(pqsamp_word *out,
                         const pqsamp_masked_bit center[PQSAMP_LANES],
                         unsigned shares)
@@ -20,6 +21,7 @@ static void pack_center(pqsamp_word *out,
   }
 }
 
+// selects one sample then maps it to the scheme value
 static int select_center(pqsamp_state *state, pqsamp_word *out,
                          const pqsamp_word *zero, const pqsamp_word *half,
                          const pqsamp_word *center)
@@ -62,6 +64,7 @@ static int select_center(pqsamp_state *state, pqsamp_word *out,
   return PQSAMP_OK;
 }
 
+// samples both centers then selects with shared center bits
 int pqsamp_hawk_sample_masked(pqsamp_masked_i16 *out, size_t n,
                               pqsamp_profile profile,
                               const pqsamp_masked_bit *center, unsigned shares,
