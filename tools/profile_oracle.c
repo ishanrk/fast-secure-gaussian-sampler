@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pqsamp.h"
+#include "internal.h"
 
 #define PQSAMP_ORACLE_PREC 512U
 #define PQSAMP_ORACLE_ALPHA 256U
@@ -19,15 +19,15 @@ typedef struct
   const char *acceptance;
   const char *failure;
   const char *renyi;
-} pqsamp_oracle_expected;
+} oracle_expected;
 
-static const pqsamp_oracle_expected pqsamp_oracle_results[2][2] = {
+static const oracle_expected expected_results[2][2] = {
     {{"0.7207801827980715", "-94.3657", "87.0105"},
      {"0.7645028325020456", "-115.6042", "82.5025"}},
     {{"0.7228802869050787", "-95.2942", "85.3386"},
      {"0.7667303292849444", "-116.8059", "80.3455"}}};
 
-static uint64_t pqsamp_oracle_gcd(uint64_t left, uint64_t right)
+static uint64_t gcd_u64(uint64_t left, uint64_t right)
 {
   while (right != 0U)
   {
@@ -39,7 +39,7 @@ static uint64_t pqsamp_oracle_gcd(uint64_t left, uint64_t right)
   return left;
 }
 
-static int pqsamp_oracle_mul(uint64_t left, uint64_t right, uint64_t *out)
+static int mul_checked(uint64_t left, uint64_t right, uint64_t *out)
 {
   if (left != 0U && right > UINT64_MAX / left)
   {
@@ -49,7 +49,7 @@ static int pqsamp_oracle_mul(uint64_t left, uint64_t right, uint64_t *out)
   return 0;
 }
 
-static int pqsamp_oracle_set_u64(mpfr_t out, uint64_t value)
+static int set_u64(mpfr_t out, uint64_t value)
 {
   char text[32];
 
@@ -60,7 +60,7 @@ static int pqsamp_oracle_set_u64(mpfr_t out, uint64_t value)
   return mpfr_set_str(out, text, 10, MPFR_RNDN);
 }
 
-static int pqsamp_oracle_get_floor(const mpfr_t value, uint64_t *out)
+static int get_floor(const mpfr_t value, uint64_t *out)
 {
   char text[32];
 
@@ -72,8 +72,8 @@ static int pqsamp_oracle_get_floor(const mpfr_t value, uint64_t *out)
   return 0;
 }
 
-static int pqsamp_oracle_threshold(uint64_t residue, uint64_t k0, unsigned bits,
-                                   uint64_t *out)
+static int boundary_count(uint64_t residue, uint64_t k0, unsigned bits,
+                          uint64_t *out)
 {
   mpfr_t r;
   mpfr_t modulus;
@@ -87,8 +87,7 @@ static int pqsamp_oracle_threshold(uint64_t residue, uint64_t k0, unsigned bits,
   mpfr_init2(modulus, PQSAMP_ORACLE_PREC);
   mpfr_init2(lower, PQSAMP_ORACLE_PREC);
   mpfr_init2(upper, PQSAMP_ORACLE_PREC);
-  if (pqsamp_oracle_set_u64(r, residue) != 0 ||
-      pqsamp_oracle_set_u64(modulus, k0) != 0)
+  if (set_u64(r, residue) != 0 || set_u64(modulus, k0) != 0)
   {
     goto cleanup;
   }
@@ -105,9 +104,8 @@ static int pqsamp_oracle_threshold(uint64_t residue, uint64_t k0, unsigned bits,
   mpfr_sub_ui(upper, upper, 1U, MPFR_RNDU);
   mpfr_mul_2ui(upper, upper, bits, MPFR_RNDU);
 
-  if (pqsamp_oracle_get_floor(lower, &floor_lower) == 0 &&
-      pqsamp_oracle_get_floor(upper, &floor_upper) == 0 &&
-      floor_lower == floor_upper)
+  if (get_floor(lower, &floor_lower) == 0 &&
+      get_floor(upper, &floor_upper) == 0 && floor_lower == floor_upper)
   {
     *out = floor_lower;
     ret = 0;
@@ -121,7 +119,7 @@ cleanup:
   return ret;
 }
 
-static int64_t pqsamp_oracle_floor_center(const pqsamp_params *params)
+static int64_t center_floor(const pqsamp_params *params)
 {
   int64_t numerator = params->center_num;
   int64_t denominator = params->center_den;
@@ -134,10 +132,9 @@ static int64_t pqsamp_oracle_floor_center(const pqsamp_params *params)
   return result;
 }
 
-static int pqsamp_oracle_candidate_mass(mpfr_t out,
-                                        const pqsamp_candidate *entry,
-                                        const pqsamp_params *params,
-                                        unsigned side, unsigned geometric)
+static int candidate_mass(mpfr_t out, const pqsamp_candidate *entry,
+                          const pqsamp_params *params, unsigned side,
+                          unsigned geometric)
 {
   mpfr_t side_probability;
   mpfr_t acceptance;
@@ -157,7 +154,7 @@ static int pqsamp_oracle_candidate_mass(mpfr_t out,
     ret = 0;
     goto cleanup;
   }
-  if (pqsamp_oracle_set_u64(acceptance, entry->boundary_count) != 0)
+  if (set_u64(acceptance, entry->boundary_count) != 0)
   {
     goto cleanup;
   }
@@ -173,7 +170,7 @@ cleanup:
   return ret;
 }
 
-static void pqsamp_oracle_block_failure(mpfr_t out, const mpfr_t acceptance)
+static void block_failure(mpfr_t out, const mpfr_t acceptance)
 {
   mpfr_t rejected;
   mpfr_t term;
@@ -184,13 +181,15 @@ static void pqsamp_oracle_block_failure(mpfr_t out, const mpfr_t acceptance)
   mpfr_init2(term, PQSAMP_ORACLE_PREC);
   mpfr_init2(sum, PQSAMP_ORACLE_PREC);
   mpfr_ui_sub(rejected, 1U, acceptance, MPFR_RNDN);
-  mpfr_pow_ui(term, rejected, PQSAMP_BATCH_CANDIDATES, MPFR_RNDN);
+  mpfr_pow_ui(term, rejected, PQSAMP_LANES * PQSAMP_BATCHES_PER_BLOCK,
+              MPFR_RNDN);
   mpfr_set(sum, term, MPFR_RNDN);
   for (k = 0; k < 31U; k++)
   {
     mpfr_mul(term, term, acceptance, MPFR_RNDN);
     mpfr_div(term, term, rejected, MPFR_RNDN);
-    mpfr_mul_ui(term, term, PQSAMP_BATCH_CANDIDATES - k, MPFR_RNDN);
+    mpfr_mul_ui(term, term, PQSAMP_LANES * PQSAMP_BATCHES_PER_BLOCK - k,
+                MPFR_RNDN);
     mpfr_div_ui(term, term, k + 1U, MPFR_RNDN);
     mpfr_add(sum, sum, term, MPFR_RNDN);
   }
@@ -200,8 +199,7 @@ static void pqsamp_oracle_block_failure(mpfr_t out, const mpfr_t acceptance)
   mpfr_clear(rejected);
 }
 
-static void pqsamp_oracle_ideal_weight(mpfr_t out, const pqsamp_params *params,
-                                       int y)
+static void ideal_weight(mpfr_t out, const pqsamp_params *params, int y)
 {
   int64_t distance = (int64_t)y * params->center_den - params->center_num;
 
@@ -217,8 +215,8 @@ static void pqsamp_oracle_ideal_weight(mpfr_t out, const pqsamp_params *params,
   mpfr_exp2(out, out, MPFR_RNDN);
 }
 
-static int pqsamp_oracle_renyi(mpfr_t out, mpfr_t mass[PQSAMP_ORACLE_SUPPORT],
-                               const mpfr_t total, const pqsamp_params *params)
+static int renyi_bound(mpfr_t out, mpfr_t mass[PQSAMP_ORACLE_SUPPORT],
+                       const mpfr_t total, const pqsamp_params *params)
 {
   mpfr_t ideal_normalizer;
   mpfr_t ideal;
@@ -243,7 +241,7 @@ static int pqsamp_oracle_renyi(mpfr_t out, mpfr_t mass[PQSAMP_ORACLE_SUPPORT],
   mpfr_set_zero(ideal_normalizer, 0);
   for (y = -PQSAMP_ORACLE_IDEAL_BOUND; y <= PQSAMP_ORACLE_IDEAL_BOUND; y++)
   {
-    pqsamp_oracle_ideal_weight(ideal, params, y);
+    ideal_weight(ideal, params, y);
     mpfr_add(ideal_normalizer, ideal_normalizer, ideal, MPFR_RNDN);
   }
   for (i = 0; i < PQSAMP_ORACLE_SUPPORT; i++)
@@ -254,7 +252,7 @@ static int pqsamp_oracle_renyi(mpfr_t out, mpfr_t mass[PQSAMP_ORACLE_SUPPORT],
       goto cleanup;
     }
     mpfr_div(actual, mass[i], total, MPFR_RNDN);
-    pqsamp_oracle_ideal_weight(ideal, params, y);
+    ideal_weight(ideal, params, y);
     mpfr_div(ideal, ideal, ideal_normalizer, MPFR_RNDN);
     mpfr_log(terms[i], actual, MPFR_RNDN);
     mpfr_mul_ui(terms[i], terms[i], PQSAMP_ORACLE_ALPHA, MPFR_RNDN);
@@ -302,10 +300,8 @@ cleanup:
   return ret;
 }
 
-static int pqsamp_oracle_metrics(const pqsamp_params *params,
-                                 const pqsamp_oracle_expected *expected,
-                                 mpfr_t acceptance, mpfr_t failure,
-                                 mpfr_t renyi)
+static int metrics(const pqsamp_params *params, const oracle_expected *expected,
+                   mpfr_t acceptance, mpfr_t failure, mpfr_t renyi)
 {
   mpfr_t mass[PQSAMP_ORACLE_SUPPORT];
   mpfr_t candidate;
@@ -331,8 +327,7 @@ static int pqsamp_oracle_metrics(const pqsamp_params *params,
     {
       const pqsamp_candidate *entry = &params->side[side][geometric];
 
-      if (pqsamp_oracle_candidate_mass(candidate, entry, params, side,
-                                       geometric) != 0)
+      if (candidate_mass(candidate, entry, params, side, geometric) != 0)
       {
         goto cleanup;
       }
@@ -351,8 +346,8 @@ static int pqsamp_oracle_metrics(const pqsamp_params *params,
     }
   }
 
-  pqsamp_oracle_block_failure(failure, acceptance);
-  if (pqsamp_oracle_renyi(renyi, mass, acceptance, params) != 0 ||
+  block_failure(failure, acceptance);
+  if (renyi_bound(renyi, mass, acceptance, params) != 0 ||
       mpfr_snprintf(actual_acceptance, sizeof(actual_acceptance), "%.16RNf",
                     acceptance) < 0 ||
       mpfr_snprintf(actual_failure, sizeof(actual_failure), "%.4RNf", failure) <
@@ -377,11 +372,11 @@ cleanup:
   return ret;
 }
 
-static int pqsamp_oracle_profile(pqsamp_profile profile, pqsamp_center center)
+static int check_profile(pqsamp_profile profile, pqsamp_center center)
 {
-  const pqsamp_params *params = pqsamp_params_get(profile, center);
-  const pqsamp_oracle_expected *expected =
-      &pqsamp_oracle_results[(unsigned)profile][(unsigned)center];
+  const pqsamp_params *params = pqsamp_profile_get(profile, center);
+  const oracle_expected *expected =
+      &expected_results[(unsigned)profile][(unsigned)center];
   uint64_t q_squared;
   uint64_t p_squared;
   uint64_t gcd_left;
@@ -397,28 +392,28 @@ static int pqsamp_oracle_profile(pqsamp_profile profile, pqsamp_center center)
   mpfr_t renyi;
   int ret = -1;
 
-  if (params == NULL || pqsamp_params_check(params) != PQSAMP_OK ||
-      pqsamp_oracle_mul(params->s_den, params->s_den, &q_squared) != 0 ||
-      pqsamp_oracle_mul(params->s_num, params->s_num, &p_squared) != 0 ||
-      pqsamp_oracle_mul(2U, q_squared, &gcd_left) != 0 ||
-      pqsamp_oracle_mul(p_squared, params->center_den, &gcd_right) != 0)
+  if (params == NULL || pqsamp_profile_check(params) != PQSAMP_OK ||
+      mul_checked(params->s_den, params->s_den, &q_squared) != 0 ||
+      mul_checked(params->s_num, params->s_num, &p_squared) != 0 ||
+      mul_checked(2U, q_squared, &gcd_left) != 0 ||
+      mul_checked(p_squared, params->center_den, &gcd_right) != 0)
   {
     return -1;
   }
-  gcd = pqsamp_oracle_gcd(gcd_left, gcd_right);
-  if (pqsamp_oracle_mul(2U, params->s_num, &base) != 0 ||
-      pqsamp_oracle_mul(base, params->s_den, &base) != 0 ||
-      pqsamp_oracle_mul(base, params->center_den, &base) != 0)
+  gcd = gcd_u64(gcd_left, gcd_right);
+  if (mul_checked(2U, params->s_num, &base) != 0 ||
+      mul_checked(base, params->s_den, &base) != 0 ||
+      mul_checked(base, params->center_den, &base) != 0)
   {
     return -1;
   }
   base /= gcd;
-  if (pqsamp_oracle_mul(base, base, &k0) != 0)
+  if (mul_checked(base, base, &k0) != 0)
   {
     return -1;
   }
 
-  floor_center = pqsamp_oracle_floor_center(params);
+  floor_center = center_floor(params);
   for (side = 0; side < 2U; side++)
   {
     unsigned geometric;
@@ -445,22 +440,21 @@ static int pqsamp_oracle_profile(pqsamp_profile profile, pqsamp_center center)
       {
         distance = -distance;
       }
-      if (pqsamp_oracle_mul(2U, q_squared, &numerator) != 0 ||
-          pqsamp_oracle_mul(numerator, (uint64_t)distance, &numerator) != 0)
+      if (mul_checked(2U, q_squared, &numerator) != 0 ||
+          mul_checked(numerator, (uint64_t)distance, &numerator) != 0)
       {
         return -1;
       }
       linear = ((int64_t)numerator - (int64_t)gcd_right) / (int64_t)gcd;
-      if (pqsamp_oracle_mul((uint64_t)(linear < 0 ? -linear : linear),
-                            (uint64_t)(linear < 0 ? -linear : linear),
-                            &square) != 0)
+      if (mul_checked((uint64_t)(linear < 0 ? -linear : linear),
+                      (uint64_t)(linear < 0 ? -linear : linear), &square) != 0)
       {
         return -1;
       }
       quotient = square / k0;
       residue = square % k0;
-      if (pqsamp_oracle_threshold(residue, k0, params->threshold_bits,
-                                  &threshold) != 0 ||
+      if (boundary_count(residue, k0, params->threshold_bits, &threshold) !=
+              0 ||
           entry->y != expected_y || entry->valid != valid ||
           entry->quotient != quotient || entry->boundary_count != threshold)
       {
@@ -482,7 +476,7 @@ static int pqsamp_oracle_profile(pqsamp_profile profile, pqsamp_center center)
   mpfr_init2(acceptance, PQSAMP_ORACLE_PREC);
   mpfr_init2(failure, PQSAMP_ORACLE_PREC);
   mpfr_init2(renyi, PQSAMP_ORACLE_PREC);
-  if (pqsamp_oracle_metrics(params, expected, acceptance, failure, renyi) == 0)
+  if (metrics(params, expected, acceptance, failure, renyi) == 0)
   {
     const char *profile_name =
         profile == PQSAMP_PROFILE_S3_2 ? "3/2" : "1521/1000";
@@ -513,8 +507,7 @@ int main(void)
 
     for (center = 0; center < 2U; center++)
     {
-      if (pqsamp_oracle_profile((pqsamp_profile)profile,
-                                (pqsamp_center)center) != 0)
+      if (check_profile((pqsamp_profile)profile, (pqsamp_center)center) != 0)
       {
         mpfr_free_cache();
         return EXIT_FAILURE;

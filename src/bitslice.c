@@ -1,6 +1,6 @@
-#include "common.h"
+#include "internal.h"
 
-static void pqsamp_transpose32(uint32_t value[PQSAMP_LANES])
+static void transpose32(uint32_t value[PQSAMP_LANES])
 {
   uint32_t mask = UINT32_C(0x0000ffff);
   unsigned width = 16U;
@@ -47,7 +47,7 @@ void pqsamp_pack16(pqsamp_word out[PQSAMP_VALUE_BITS],
     {
       value[PQSAMP_LANES - 1U - lane] = in[lane].share[share];
     }
-    pqsamp_transpose32(value);
+    transpose32(value);
     for (bit = 0; bit < PQSAMP_VALUE_BITS; bit++)
     {
       out[bit].share[share] = value[PQSAMP_LANES - 1U - bit];
@@ -77,7 +77,7 @@ void pqsamp_unpack16(pqsamp_masked_i16 out[PQSAMP_LANES],
     {
       value[PQSAMP_LANES - 1U - bit] = in[bit].share[share];
     }
-    pqsamp_transpose32(value);
+    transpose32(value);
     for (lane = 0; lane < PQSAMP_LANES; lane++)
     {
       out[lane].share[share] = (uint16_t)value[PQSAMP_LANES - 1U - lane];

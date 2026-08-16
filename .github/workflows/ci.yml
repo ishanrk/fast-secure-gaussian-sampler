@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmpfr-dev libgmp-dev clang
+      - name: gcc
+        run: make test
+      - name: oracle
+        run: make oracle
+      - name: sanitizers
+        run: ASAN_OPTIONS=detect_leaks=0 make sanitize
+      - name: clang
+        run: make check-clang

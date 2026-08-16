@@ -56,9 +56,9 @@ instantiated over `[-13,13]`:
 | `1521/1000` | `0` | `1.29181845823808` | 61 | 45 |
 | `1521/1000` | `1/2` | `1.29181845823808` | 66 | 43 |
 
-`make oracle` independently recomputes the stored quotients and directed-rounding
-boundary counts. That verifies these four records; it is not a distribution
-certificate for arbitrary caller-supplied profiles.
+`make oracle` independently recomputes the stored quotients and
+directed-rounding boundary counts. That verifies these four records; no
+caller-defined profile API is exposed.
 
 The widths are close to, but not equal to, the HAWK v1.1 signing widths `1.278`
 and `1.299`. Consequently, the built-ins are research fixtures and are not
@@ -76,7 +76,7 @@ advertised as HAWK known-answer-test or signature-compatible profiles.
 - Bronchain and Cassiers,
   [bitsliced arithmetic/Boolean masking conversions](https://eprint.iacr.org/2022/158),
   supplies the full-adder lineage used by the masked comparison and adapter.
-  Its Boolean-to-arithmetic conversions are a future integration reference;
+  Its Boolean-to-arithmetic conversions are a future scheme reference;
   this library does not implement or claim B2A conversion.
 
 The C source follows those gadget structures with fresh pair randomness and
@@ -94,8 +94,8 @@ The [official C99 implementation, pinned at
 `1b9fef52559273fe7b40fe3e22968eaedd3a4c2a`](https://github.com/hawk-sign/dev/tree/1b9fef52559273fe7b40fe3e22968eaedd3a4c2a)
 is the interoperability reference. The adapter is not patched into that signer
 and does not implement its Boolean-to-arithmetic conversion or masked
-downstream arithmetic. It is therefore an integration boundary and demo, not a
-complete masked HAWK signer.
+downstream arithmetic. It is therefore a masked two-center research adapter,
+not a complete masked HAWK signer.
 
 NIST [lists HAWK as withdrawn](https://csrc.nist.gov/projects/pqc-dig-sig/round-3-additional-signatures)
 as of 2026-07-29. HAWK remains here only as the motivating two-center research

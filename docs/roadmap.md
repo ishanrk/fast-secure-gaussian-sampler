@@ -7,8 +7,9 @@
 - [x] corrected finite profile tables and directed-rounding MPFR check
 - [x] 32-lane Boolean masking with 1--4 shares
 - [x] secure AND, equality, comparison, Bernoulli, geometry, and fused proposal
-- [x] fixed four-batch scheduling and fixed-address accepted-lane selection
-- [x] share-aware two-center adapter and working demos
+- [x] two-stage early rejection and pooled public lane compaction
+- [x] postponed three-gate half-center reconstruction after final acceptance
+- [x] masked two-center research adapter and minimal demo
 - [x] compact deterministic/statistical/adapter tests
 - [x] sanitizer, Valgrind, fuzz, CBMC, GCC/Clang, M4, and RV32 build targets
 
@@ -28,7 +29,7 @@
 
 - [x] masked selection and `x=2y-t` adapter boundary
 - [ ] PINI-compatible Boolean-to-arithmetic conversion for a chosen consumer
-- [ ] masked downstream arithmetic and complete sign/verify integration
+- [ ] masked downstream arithmetic and complete sign/verify path
 - [ ] scheme-specific rational-width certificate and official interoperability
   vectors
 

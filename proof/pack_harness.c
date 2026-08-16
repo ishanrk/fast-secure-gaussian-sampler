@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "common.h"
+#include "internal.h"
 
 uint16_t nondet_uint16_t(void);
 

@@ -1,6 +1,6 @@
-#include "common.h"
+#include "internal.h"
 
-static uint64_t pqsamp_load64(const uint8_t src[8])
+static uint64_t load64(const uint8_t src[8])
 {
   uint64_t value = 0;
   unsigned i;
@@ -12,7 +12,7 @@ static uint64_t pqsamp_load64(const uint8_t src[8])
   return value;
 }
 
-static int pqsamp_rng_refill(pqsamp_rng *rng)
+static int refill(pqsamp_rng *rng)
 {
   uint8_t bytes[8];
 
@@ -21,7 +21,7 @@ static int pqsamp_rng_refill(pqsamp_rng *rng)
     rng->error = PQSAMP_ERR_RANDOM;
     return rng->error;
   }
-  rng->buffer = pqsamp_load64(bytes);
+  rng->buffer = load64(bytes);
   rng->available = 64U;
   return PQSAMP_OK;
 }
@@ -62,7 +62,7 @@ int pqsamp_rng_bits(pqsamp_rng *rng, unsigned count, uint32_t *value)
 
     if (rng->available == 0U)
     {
-      int ret = pqsamp_rng_refill(rng);
+      int ret = refill(rng);
 
       if (ret != PQSAMP_OK)
       {
@@ -115,11 +115,6 @@ int pqsamp_rng_bits64(pqsamp_rng *rng, unsigned count, uint64_t *value)
   }
   *value = (uint64_t)low | ((uint64_t)high << 32);
   return PQSAMP_OK;
-}
-
-uint64_t pqsamp_rng_bits_used(const pqsamp_rng *rng)
-{
-  return rng == NULL ? 0U : rng->bits_used;
 }
 
 const char *pqsamp_strerror(int error)

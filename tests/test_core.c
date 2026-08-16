@@ -2,10 +2,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "common.h"
+#include "internal.h"
 #include "test.h"
 
-static uint32_t pqsamp_test_word_value(const pqsamp_word *word, unsigned shares)
+static uint32_t word_value(const pqsamp_word *word, unsigned shares)
 {
   uint32_t value = 0;
   unsigned share;
@@ -17,8 +17,8 @@ static uint32_t pqsamp_test_word_value(const pqsamp_word *word, unsigned shares)
   return value;
 }
 
-static void pqsamp_test_share_word(pqsamp_word *word, uint32_t value,
-                                   unsigned shares, uint32_t salt)
+static void share_word(pqsamp_word *word, uint32_t value, unsigned shares,
+                       uint32_t salt)
 {
   unsigned share;
 
@@ -37,11 +37,11 @@ typedef struct
 {
   uint8_t bytes[16];
   size_t offset;
-} pqsamp_byte_source;
+} byte_source;
 
-static int pqsamp_byte_randombytes(void *context, uint8_t *out, size_t size)
+static int byte_randombytes(void *context, uint8_t *out, size_t size)
 {
-  pqsamp_byte_source *source = context;
+  byte_source *source = context;
   size_t i;
 
   if (source->offset + size > sizeof(source->bytes))
@@ -56,28 +56,26 @@ static int pqsamp_byte_randombytes(void *context, uint8_t *out, size_t size)
   return 0;
 }
 
-static int pqsamp_test_rng_bits_order(void)
+static int rng_bits_order(void)
 {
-  pqsamp_byte_source source = {{0x53, 0xa9, 0x1c, 0xe0, 0x72, 0x44, 0x8d, 0xf1,
-                                0x3b, 0x17, 0x90, 0x21, 0xca, 0x68, 0x5d, 0xb4},
-                               0};
+  byte_source source = {{0x53, 0xa9, 0x1c, 0xe0, 0x72, 0x44, 0x8d, 0xf1, 0x3b,
+                         0x17, 0x90, 0x21, 0xca, 0x68, 0x5d, 0xb4},
+                        0};
   pqsamp_rng rng;
   uint32_t value;
 
-  PQSAMP_CHECK(pqsamp_rng_init(&rng, pqsamp_byte_randombytes, &source) ==
-               PQSAMP_OK);
+  PQSAMP_CHECK(pqsamp_rng_init(&rng, byte_randombytes, &source) == PQSAMP_OK);
   PQSAMP_CHECK(pqsamp_rng_bits(&rng, 5U, &value) == PQSAMP_OK);
   PQSAMP_CHECK(value == 0x13U);
   PQSAMP_CHECK(pqsamp_rng_bits(&rng, 17U, &value) == PQSAMP_OK);
   PQSAMP_CHECK(value == 0xe54aU);
-  PQSAMP_CHECK(pqsamp_rng_bits_used(&rng) == 22U);
+  PQSAMP_CHECK(rng.bits_used == 22U);
   return 0;
 }
 
-static int pqsamp_test_gadgets(unsigned shares)
+static int gadgets(unsigned shares)
 {
-  pqsamp_test_rng mask_source =
-      pqsamp_test_rng_make(UINT64_C(0x123456789abcdef));
+  test_rng mask_source = test_rng_make(UINT64_C(0x123456789abcdef));
   pqsamp_rng masks;
   pqsamp_state state;
   pqsamp_word left;
@@ -92,16 +90,16 @@ static int pqsamp_test_gadgets(unsigned shares)
   unsigned bit;
   unsigned lane;
 
-  PQSAMP_CHECK(pqsamp_rng_init(&masks, pqsamp_test_randombytes, &mask_source) ==
+  PQSAMP_CHECK(pqsamp_rng_init(&masks, test_randombytes, &mask_source) ==
                PQSAMP_OK);
   state.shares = shares;
   state.coins = NULL;
   state.masks = shares == 1U ? NULL : &masks;
   state.stats = NULL;
-  pqsamp_test_share_word(&left, UINT32_C(0x96696996), shares, 3U);
-  pqsamp_test_share_word(&right, UINT32_C(0xf0cc3c5a), shares, 7U);
+  share_word(&left, UINT32_C(0x96696996), shares, 3U);
+  share_word(&right, UINT32_C(0xf0cc3c5a), shares, 7U);
   PQSAMP_CHECK(pqsamp_sec_and(&state, &result, &left, &right) == PQSAMP_OK);
-  PQSAMP_CHECK(pqsamp_test_word_value(&result, shares) ==
+  PQSAMP_CHECK(word_value(&result, shares) ==
                (UINT32_C(0x96696996) & UINT32_C(0xf0cc3c5a)));
   PQSAMP_CHECK(pqsamp_unmask(&state, &left, &unmasked) == PQSAMP_OK);
   PQSAMP_CHECK(unmasked == UINT32_C(0x96696996));
@@ -125,19 +123,19 @@ static int pqsamp_test_gadgets(unsigned shares)
         expected_lt |= (uint32_t)(xv < yv) << lane;
       }
     }
-    pqsamp_test_share_word(&x[bit], xp, shares, bit + 11U);
-    pqsamp_test_share_word(&y[bit], yp, shares, bit + 29U);
+    share_word(&x[bit], xp, shares, bit + 11U);
+    share_word(&y[bit], yp, shares, bit + 29U);
   }
   PQSAMP_CHECK(pqsamp_sec_eq(&state, &result, x, y, 6U) == PQSAMP_OK);
-  PQSAMP_CHECK(pqsamp_test_word_value(&result, shares) == expected_eq);
+  PQSAMP_CHECK(word_value(&result, shares) == expected_eq);
   PQSAMP_CHECK(pqsamp_sec_leq(&state, &result, x, y, 6U) == PQSAMP_OK);
-  PQSAMP_CHECK(pqsamp_test_word_value(&result, shares) == expected_leq);
+  PQSAMP_CHECK(word_value(&result, shares) == expected_leq);
   PQSAMP_CHECK(pqsamp_sec_lt(&state, &result, x, y, 6U) == PQSAMP_OK);
-  PQSAMP_CHECK(pqsamp_test_word_value(&result, shares) == expected_lt);
+  PQSAMP_CHECK(word_value(&result, shares) == expected_lt);
   return 0;
 }
 
-static int pqsamp_test_bitslice(void)
+static int bitslice(void)
 {
   pqsamp_masked_i16 input[PQSAMP_LANES];
   pqsamp_masked_i16 output[PQSAMP_LANES];
@@ -161,15 +159,315 @@ static int pqsamp_test_bitslice(void)
   return 0;
 }
 
+static void batch_zero(pqsamp_batch *batch)
+{
+  unsigned i;
+
+  for (i = 0; i < PQSAMP_VALUE_BITS; i++)
+  {
+    pqsamp_word_zero(&batch->y[i]);
+  }
+  for (i = 0; i < PQSAMP_K_BITS; i++)
+  {
+    pqsamp_word_zero(&batch->quotient[i]);
+    pqsamp_word_zero(&batch->k[i]);
+  }
+  for (i = 0; i < PQSAMP_BOUNDARY_BITS; i++)
+  {
+    pqsamp_word_zero(&batch->boundary[i]);
+  }
+}
+
+static void half_batch_zero(pqsamp_half_batch *batch)
+{
+  unsigned i;
+
+  for (i = 0; i < PQSAMP_HALF_GEOM_BITS; i++)
+  {
+    pqsamp_word_zero(&batch->value.g[i]);
+  }
+  pqsamp_word_zero(&batch->value.side);
+  for (i = 0; i < PQSAMP_K_BITS; i++)
+  {
+    pqsamp_word_zero(&batch->quotient[i]);
+    pqsamp_word_zero(&batch->k[i]);
+  }
+  for (i = 0; i < PQSAMP_BOUNDARY_BITS; i++)
+  {
+    pqsamp_word_zero(&batch->boundary[i]);
+  }
+}
+
+static void set_lane(pqsamp_word *word, unsigned words, unsigned lane,
+                     unsigned share, uint64_t value)
+{
+  unsigned bit;
+
+  for (bit = 0; bit < words; bit++)
+  {
+    word[bit].share[share] |= (uint32_t)((value >> bit) & 1U) << lane;
+  }
+}
+
+static uint64_t get_lane(const pqsamp_word *word, unsigned words, unsigned lane,
+                         unsigned share)
+{
+  uint64_t value = 0;
+  unsigned bit;
+
+  for (bit = 0; bit < words; bit++)
+  {
+    value |= (uint64_t)((word[bit].share[share] >> lane) & 1U) << bit;
+  }
+  return value;
+}
+
+static unsigned popcount32(uint32_t x)
+{
+  unsigned count = 0;
+
+  while (x != 0U)
+  {
+    x &= x - 1U;
+    count++;
+  }
+  return count;
+}
+
+static unsigned next_lane(uint32_t *mask)
+{
+  unsigned lane = 0;
+  uint32_t x = *mask;
+
+  while ((x & 1U) == 0U)
+  {
+    x >>= 1;
+    lane++;
+  }
+  *mask &= *mask - 1U;
+  return lane;
+}
+
+static int compact_case(uint32_t mask, unsigned offset, unsigned shares)
+{
+  pqsamp_batch in;
+  pqsamp_batch out;
+  uint32_t expected_mask = mask;
+  uint32_t remaining;
+  unsigned capacity = PQSAMP_LANES - offset;
+  unsigned taken = popcount32(mask);
+  unsigned filled = offset;
+  unsigned lane;
+  unsigned share;
+
+  if (taken > capacity)
+  {
+    taken = capacity;
+  }
+  batch_zero(&in);
+  batch_zero(&out);
+  for (lane = 0; lane < PQSAMP_LANES; lane++)
+  {
+    for (share = 0; share < shares; share++)
+    {
+      set_lane(in.y, PQSAMP_VALUE_BITS, lane, share,
+               (uint64_t)(share * 257U + lane * 3U + 1U));
+      set_lane(in.quotient, PQSAMP_K_BITS, lane, share,
+               (uint64_t)(share * 32U + lane));
+      set_lane(in.boundary, PQSAMP_BOUNDARY_BITS, lane, share,
+               (uint64_t)(share + 1U) * UINT64_C(100000) + lane * 997U);
+      set_lane(in.k, PQSAMP_K_BITS, lane, share,
+               (uint64_t)((share * 17U + lane * 2U) & 127U));
+    }
+  }
+  remaining = pqsamp_compact_batch(&out, &filled, &in, mask, shares);
+  PQSAMP_CHECK(filled == offset + taken);
+  for (lane = 0; lane < taken; lane++)
+  {
+    unsigned src = next_lane(&expected_mask);
+    unsigned dst = offset + lane;
+
+    for (share = 0; share < shares; share++)
+    {
+      PQSAMP_CHECK(get_lane(out.y, PQSAMP_VALUE_BITS, dst, share) ==
+                   get_lane(in.y, PQSAMP_VALUE_BITS, src, share));
+      PQSAMP_CHECK(get_lane(out.quotient, PQSAMP_K_BITS, dst, share) ==
+                   get_lane(in.quotient, PQSAMP_K_BITS, src, share));
+      PQSAMP_CHECK(get_lane(out.boundary, PQSAMP_BOUNDARY_BITS, dst, share) ==
+                   get_lane(in.boundary, PQSAMP_BOUNDARY_BITS, src, share));
+      PQSAMP_CHECK(get_lane(out.k, PQSAMP_K_BITS, dst, share) ==
+                   get_lane(in.k, PQSAMP_K_BITS, src, share));
+    }
+  }
+  PQSAMP_CHECK(remaining == expected_mask);
+  for (lane = 0; lane < PQSAMP_LANES; lane++)
+  {
+    if (lane < offset || lane >= filled)
+    {
+      for (share = 0; share < PQSAMP_MAX_SHARES; share++)
+      {
+        PQSAMP_CHECK(get_lane(out.y, PQSAMP_VALUE_BITS, lane, share) == 0U);
+        PQSAMP_CHECK(get_lane(out.quotient, PQSAMP_K_BITS, lane, share) == 0U);
+        PQSAMP_CHECK(
+            get_lane(out.boundary, PQSAMP_BOUNDARY_BITS, lane, share) == 0U);
+        PQSAMP_CHECK(get_lane(out.k, PQSAMP_K_BITS, lane, share) == 0U);
+      }
+    }
+    for (share = shares; share < PQSAMP_MAX_SHARES; share++)
+    {
+      PQSAMP_CHECK(get_lane(out.y, PQSAMP_VALUE_BITS, lane, share) == 0U);
+      PQSAMP_CHECK(get_lane(out.quotient, PQSAMP_K_BITS, lane, share) == 0U);
+      PQSAMP_CHECK(get_lane(out.boundary, PQSAMP_BOUNDARY_BITS, lane, share) ==
+                   0U);
+      PQSAMP_CHECK(get_lane(out.k, PQSAMP_K_BITS, lane, share) == 0U);
+    }
+  }
+  return 0;
+}
+
+static int half_compact_case(uint32_t mask, unsigned offset, unsigned shares)
+{
+  pqsamp_half_batch in;
+  pqsamp_half_batch out;
+  uint32_t expected_mask = mask;
+  uint32_t remaining;
+  unsigned capacity = PQSAMP_LANES - offset;
+  unsigned taken = popcount32(mask);
+  unsigned filled = offset;
+  unsigned lane;
+  unsigned share;
+
+  if (taken > capacity)
+  {
+    taken = capacity;
+  }
+  half_batch_zero(&in);
+  half_batch_zero(&out);
+  for (lane = 0; lane < PQSAMP_LANES; lane++)
+  {
+    for (share = 0; share < shares; share++)
+    {
+      set_lane(in.value.g, PQSAMP_HALF_GEOM_BITS, lane, share,
+               (uint64_t)((share * 7U + lane) & 15U));
+      set_lane(&in.value.side, 1U, lane, share,
+               (uint64_t)((share + lane) & 1U));
+      set_lane(in.quotient, PQSAMP_K_BITS, lane, share,
+               (uint64_t)(share * 32U + lane));
+      set_lane(in.boundary, PQSAMP_BOUNDARY_BITS, lane, share,
+               (uint64_t)(share + 1U) * UINT64_C(100000) + lane * 997U);
+      set_lane(in.k, PQSAMP_K_BITS, lane, share,
+               (uint64_t)((share * 17U + lane * 2U) & 127U));
+    }
+  }
+  remaining = pqsamp_compact_half_batch(&out, &filled, &in, mask, shares);
+  PQSAMP_CHECK(filled == offset + taken);
+  for (lane = 0; lane < taken; lane++)
+  {
+    unsigned src = next_lane(&expected_mask);
+    unsigned dst = offset + lane;
+
+    for (share = 0; share < shares; share++)
+    {
+      PQSAMP_CHECK(get_lane(out.value.g, PQSAMP_HALF_GEOM_BITS, dst, share) ==
+                   get_lane(in.value.g, PQSAMP_HALF_GEOM_BITS, src, share));
+      PQSAMP_CHECK(get_lane(&out.value.side, 1U, dst, share) ==
+                   get_lane(&in.value.side, 1U, src, share));
+      PQSAMP_CHECK(get_lane(out.quotient, PQSAMP_K_BITS, dst, share) ==
+                   get_lane(in.quotient, PQSAMP_K_BITS, src, share));
+      PQSAMP_CHECK(get_lane(out.boundary, PQSAMP_BOUNDARY_BITS, dst, share) ==
+                   get_lane(in.boundary, PQSAMP_BOUNDARY_BITS, src, share));
+      PQSAMP_CHECK(get_lane(out.k, PQSAMP_K_BITS, dst, share) ==
+                   get_lane(in.k, PQSAMP_K_BITS, src, share));
+    }
+  }
+  PQSAMP_CHECK(remaining == expected_mask);
+  for (lane = 0; lane < PQSAMP_LANES; lane++)
+  {
+    if (lane < offset || lane >= filled)
+    {
+      for (share = 0; share < PQSAMP_MAX_SHARES; share++)
+      {
+        PQSAMP_CHECK(
+            get_lane(out.value.g, PQSAMP_HALF_GEOM_BITS, lane, share) == 0U);
+        PQSAMP_CHECK(get_lane(&out.value.side, 1U, lane, share) == 0U);
+        PQSAMP_CHECK(get_lane(out.quotient, PQSAMP_K_BITS, lane, share) == 0U);
+        PQSAMP_CHECK(
+            get_lane(out.boundary, PQSAMP_BOUNDARY_BITS, lane, share) == 0U);
+        PQSAMP_CHECK(get_lane(out.k, PQSAMP_K_BITS, lane, share) == 0U);
+      }
+    }
+    for (share = shares; share < PQSAMP_MAX_SHARES; share++)
+    {
+      PQSAMP_CHECK(get_lane(out.value.g, PQSAMP_HALF_GEOM_BITS, lane, share) ==
+                   0U);
+      PQSAMP_CHECK(get_lane(&out.value.side, 1U, lane, share) == 0U);
+      PQSAMP_CHECK(get_lane(out.quotient, PQSAMP_K_BITS, lane, share) == 0U);
+      PQSAMP_CHECK(get_lane(out.boundary, PQSAMP_BOUNDARY_BITS, lane, share) ==
+                   0U);
+      PQSAMP_CHECK(get_lane(out.k, PQSAMP_K_BITS, lane, share) == 0U);
+    }
+  }
+  return 0;
+}
+
+static int compaction(void)
+{
+  static const uint32_t patterns[] = {0U,
+                                      UINT32_MAX,
+                                      UINT32_C(0x0000ffff),
+                                      UINT32_C(0xffff0000),
+                                      UINT32_C(0x55555555),
+                                      UINT32_C(0xaaaaaaaa),
+                                      UINT32_C(0x83a51f09),
+                                      UINT32_C(0x6c42d7e1),
+                                      UINT32_C(0x107fe288),
+                                      UINT32_C(0xd91140b5)};
+  static const unsigned offsets[] = {0U, 1U, 15U, 31U};
+  unsigned shares;
+
+  for (shares = 1U; shares <= PQSAMP_MAX_SHARES; shares++)
+  {
+    unsigned offset;
+
+    for (offset = 0; offset < sizeof(offsets) / sizeof(offsets[0]); offset++)
+    {
+      unsigned i;
+
+      for (i = 0; i < sizeof(patterns) / sizeof(patterns[0]); i++)
+      {
+        PQSAMP_CHECK(compact_case(patterns[i], offsets[offset], shares) == 0);
+        PQSAMP_CHECK(half_compact_case(patterns[i], offsets[offset], shares) ==
+                     0);
+      }
+      for (i = 0; i < PQSAMP_LANES; i++)
+      {
+        PQSAMP_CHECK(compact_case(UINT32_C(1) << i, offsets[offset], shares) ==
+                     0);
+        PQSAMP_CHECK(
+            half_compact_case(UINT32_C(1) << i, offsets[offset], shares) == 0);
+      }
+      for (i = 0; i + 1U < PQSAMP_LANES; i++)
+      {
+        PQSAMP_CHECK(compact_case(UINT32_C(3) << i, offsets[offset], shares) ==
+                     0);
+        PQSAMP_CHECK(
+            half_compact_case(UINT32_C(3) << i, offsets[offset], shares) == 0);
+      }
+    }
+  }
+  return 0;
+}
+
 int main(void)
 {
   unsigned shares;
 
-  PQSAMP_CHECK(pqsamp_test_rng_bits_order() == 0);
-  PQSAMP_CHECK(pqsamp_test_bitslice() == 0);
+  PQSAMP_CHECK(rng_bits_order() == 0);
+  PQSAMP_CHECK(bitslice() == 0);
+  PQSAMP_CHECK(compaction() == 0);
   for (shares = 1; shares <= PQSAMP_MAX_SHARES; shares++)
   {
-    PQSAMP_CHECK(pqsamp_test_gadgets(shares) == 0);
+    PQSAMP_CHECK(gadgets(shares) == 0);
   }
   puts("core: ok");
   return 0;

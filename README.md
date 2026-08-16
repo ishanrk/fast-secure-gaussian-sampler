@@ -1,159 +1,118 @@
 # fast-secure-gaussian-sampler
 
-A small C99 library for fixed-profile discrete-Gaussian sampling with the
-Maskaglia transform. It provides a readable scalar path, a portable 32-lane
-Boolean-masked path, and a share-aware adapter boundary for PQC schemes.
+## What this is
 
-This is research software. The C code follows the paper's PINI gadget structure,
-but that does not prove that an optimizing compiler or a physical target
-preserves the abstract leakage model. No production side-channel claim is made.
+A small portable C99 research library for fixed-profile discrete-Gaussian
+sampling with the Maskaglia transform. It contains a readable scalar sampler,
+a 32-lane Boolean-masked sampler, and a masked two-center research adapter.
 
-## What is implemented
+## Implemented status
 
-- Exact integer runtime sampling: no floating point, logarithm, or `libm` in the
-  library.
-- Corrected finite Maskaglia acceptance with precomputed rational-profile
-  tables, exact saturated acceptance geometry, and 43/45-bit boundary coins.
-- Portable bitslicing over 32 lanes and Boolean outputs with 1--4 shares.
-- CS20 PINI-style `SecAnd`, masked equality/comparison, exact masked Bernoulli,
-  fused discrete-Laplace evaluation, and refreshed public decisions.
-- Separate caller-owned streams for sampler coins and masking randomness.
-- Four fixed candidate batches and fixed-address accepted-lane selection per
-  block of up to 32 outputs. The worst built-in profile fails to fill a block
-  with probability below `2^-94`; failure zeros the output and returns
-  `PQSAMP_ERR_BOUND`.
-- A masked-center adapter that samples both centers, selects without unmasking,
-  and returns the shared representation `x = 2y - t`.
-- Deterministic vectors, modest distribution tests, MPFR-directed profile
-  checks, sanitizer/fuzzer/Valgrind targets, a CBMC packing proof, GCC/Clang
-  builds, and freestanding Cortex-M4/RV32 compile targets.
+- two built-in rational widths and centers `0` and `1/2`
+- integer-only runtime sampling with no heap or hidden RNG
+- 32 bitsliced lanes with one through four Boolean shares
+- CS20-style secure AND, masked comparison, equality, Bernoulli, and proposal
+- separate caller-owned streams for sample coins and masking randomness
+- two-stage early rejection with pooled public survivor compaction
+- a finite cap of four candidate batches per requested 32-output block
+- complete output clearing on RNG, parameter, or public bound failure
+- MPFR profile oracle, three focused test programs, fuzzing, and CBMC packing
+- a separate `libpqsamp_hawk.a` adapter for masked selection and `x=2y-t`
 
-The implementation is intentionally one portable backend. There is no empty
-AVX2 facade or claimed hardware result: a native backend belongs here only when
-it is real, differential-tested, and measured.
+Profile tables and candidate records are private. The public API accepts only
+the four compiled profile and center combinations.
 
-## Build and run
+## Security status
+
+The source follows the paper's Boolean masking and refresh structure. This is
+not proof that a compiler or physical target preserves PINI. Optimized host
+assembly spills shares and reuses registers, so the project makes no generic
+side-channel-security or production claim. See [docs/security.md](docs/security.md).
+
+The HAWK-shaped code is a masked two-center research adapter, not a complete
+HAWK implementation and not a HAWK known-answer-test compatible sampler.
+
+## Build and validation
 
 ```sh
-make                 # build/libpqsamp.a and build/libpqsamp_hawk.a
-make test            # three focused test programs
-make oracle          # verify every built-in table with MPFR directed rounding
-make sanitize        # ASan + UBSan
-make check-clang     # rebuild and test with Clang
+make                    # build/libpqsamp.a
+make adapter            # build/libpqsamp_hawk.a
+make test
+make bench
+make oracle             # requires MPFR and GMP
+ASAN_OPTIONS=detect_leaks=0 make sanitize
+make check-clang
+make assembly
+make stack
 make valgrind
-make cbmc            # prove 32x16 pack/unpack round trips
-make stack           # compiler stack-frame report
-make demo            # scalar sampler and masked adapter examples
-make bench           # scalar and shares 1--4 JSON Lines records
-make install PREFIX=/usr/local DESTDIR=/tmp/package
+make fuzz
+make cbmc
+make cross-m4
+make cross-rv32
+make demo
 ```
 
-`make cross-m4` uses Clang's freestanding Cortex-M4 target. `make cross-rv32`
-uses `riscv64-linux-gnu-gcc` with an RV32 ABI; override `M4_CC`, `M4_AR`,
-`RV32_CC`, or `RV32_AR` when the tools are elsewhere.
-The optional adapter archive depends on the core archive, so static consumers
-link it as `-lpqsamp_hawk -lpqsamp`.
-The library itself has no external link dependency; only the offline oracle
-requires MPFR and GMP.
-
-## API
-
-The public surface is [pqsamp.h](include/pqsamp.h). A random callback must fill
-the complete request or fail.
+## API example
 
 ```c
-pqsamp_rng rng;
-int16_t out[64];
-const pqsamp_params *params =
-    pqsamp_params_get(PQSAMP_PROFILE_S3_2, PQSAMP_CENTER_ZERO);
+pqsamp_rng coins;
+pqsamp_rng masks;
+int16_t plain[32];
+pqsamp_masked_i16 shared[32];
 
-if (pqsamp_rng_init(&rng, randombytes, random_context) != PQSAMP_OK ||
-    pqsamp_generate(out, 64, params, &rng, NULL) != PQSAMP_OK)
+if (pqsamp_rng_init(&coins, randombytes, coin_context) != PQSAMP_OK ||
+    pqsamp_rng_init(&masks, randombytes, mask_context) != PQSAMP_OK ||
+    pqsamp_sample(plain, 32, PQSAMP_PROFILE_S3_2, PQSAMP_CENTER_ZERO,
+                  &coins, NULL) != PQSAMP_OK ||
+    pqsamp_sample_masked(shared, 32, PQSAMP_PROFILE_S3_2,
+                         PQSAMP_CENTER_HALF, 3, &coins, &masks,
+                         NULL) != PQSAMP_OK)
 {
   /* handle failure */
 }
 ```
 
-For masked output, pass two distinct RNG contexts and retain all shares:
+The random callback must fill the complete request or fail. For two or more
+shares, `coins` and `masks` must be cryptographically independent. Masked
+consumers should retain all shares rather than reconstructing the sample.
 
-```c
-pqsamp_masked_i16 out[64];
-
-if (pqsamp_generate_masked(out, 64, params, 3, &sampler_coins,
-                           &masking_randomness, NULL) != PQSAMP_OK)
-{
-  /* out is zeroed */
-}
-```
-
-`pqsamp_reconstruct()` is for tests and explicitly unmasked consumers. A masked
-consumer should operate on `pqsamp_masked_i16` directly.
-
-## Runtime construction
-
-For public rationals `s=p/q` and `c=p'/q'`, the generated record stores
+## Layout
 
 ```text
-g   = gcd(2 q^2, p^2 q')
-K0  = (2 p q q' / g)^2
-Ly  = (2 q^2 |y q' - p'| - p^2 q') / g
-Ly^2 = qy K0 + ry
+include/pqsamp.h        public API
+src/scalar.c            readable scalar sampler
+src/maskaglia.c         masked Maskaglia candidate path
+src/gadgets.c           Boolean masking gadgets
+src/masked.c            pooled scheduler and public compaction
+src/profiles.c          private fixed profiles
+adapters/hawk/          masked two-center research adapter
+tools/profile_oracle.c  offline MPFR verification
+tests/                  core sampler and adapter checks
 ```
 
-The proposal is a finite discrete Laplace sample. Acceptance draws
-`K=min(Geom(1/2), Ksat)`, where `Ksat=max(qy)+1`. It rejects for `K<qy`, accepts
-for `K>qy`, and at equality accepts when a uniform `pU`-bit integer is below
+## Performance status
 
-```text
-floor(2^pU (2^(1 - ry/K0) - 1)).
-```
+`make bench` emits JSON Lines for both centers on the scalar path and the
+portable masked path with one through four shares. On the built-in `s=3/2`
+profile, the zero-center side pool uses exactly one secure AND per raw
+Bernoulli batch. The pinned trace uses 1,914 raw side batches, 1,432 stage-one
+batches, and 1,258 stage-two batches: `203370 / 32768 = 6.206359863` secure AND
+calls per output. The half-center path postpones `Y` reconstruction until final
+acceptance and uses exactly `183188 / 32768 = 5.5904541015625` secure AND calls
+per output on the pinned benchmark trace. Host wall time is diagnostic only;
+there are no AVX2 results or board cycle claims.
 
-The exact saturation matters. The paper supplement's aggressive `K=40` cut
-checks only aggregate accept/reject mass and makes far-tail outputs unreachable;
-this implementation does not use it. It also handles the paper pseudocode's
-all-zero geometric and complemented-threshold ambiguities explicitly. See
-[design.md](docs/design.md) for the corrected control flow.
+## Remaining work
 
-## Built-in research profiles
+- complete interval certificates for tails quantization and width error
+- reviewed compiler and timing evidence on named targets
+- measured AVX2 Cortex-M4 and RV32 implementations
+- Boolean-to-arithmetic conversion and masked downstream scheme arithmetic
+- physical leakage experiments and reproducible raw measurements
 
-| `s` | center | implied sigma | support | `Ksat` | `pU` |
-|---:|---:|---:|---:|---:|---:|
-| `3/2` | `0` | `1.2739827004` | `[-13,13]` | 63 | 45 |
-| `3/2` | `1/2` | `1.2739827004` | `[-13,13]` | 69 | 43 |
-| `1521/1000` | `0` | `1.2918184582` | `[-13,13]` | 61 | 45 |
-| `1521/1000` | `1/2` | `1.2918184582` | `[-13,13]` | 66 | 43 |
+## Primary references
 
-The public `pqsamp_params` descriptor also allows generated fixed profiles for
-other PQC consumers. A record must include its own approximation/tail analysis;
-passing `pqsamp_params_check()` proves only structural and integer bounds.
-`make oracle` reproduces the built-in table rows, raw acceptance rates, batching
-failure, and estimated order-256 Renyi figures recorded in
-[results/profiles.json](results/profiles.json).
-
-These profiles are not the official HAWK v1.1 distributions: HAWK lists signing
-widths `1.278` and `1.299`. The adapter is therefore a working share-preserving
-integration boundary and research demo, not a claim of HAWK KAT compatibility
-or a complete masked HAWK signer. Official HAWK immediately consumes ordinary
-samples in unmasked arithmetic; protecting the full signer also requires a
-justified Boolean-to-arithmetic conversion and masked downstream arithmetic.
-
-## Security boundary
-
-The portable sampler has fixed candidate-batch count, fixed array bounds, no
-heap allocation, no secret-indexed table access, fixed-address lane selection,
-and no early unmasking of the sample. Rejection and validity masks are refreshed
-before being made public, as allowed by the paper's model. The exact-fill RNG
-error is sticky.
-
-Still unproven and unmeasured:
-
-- preservation of PINI under a particular compiler, optimization level, and
-  ABI;
-- transition, glitch, register-spill, power, or electromagnetic leakage;
-- AVX2 performance, embedded cycle counts, or physical traces;
-- end-to-end masked signing in any external scheme;
-- a formal interval certificate for the complete Gaussian tail and width
-  approximation of arbitrary custom profiles.
-
-See [security.md](docs/security.md), [sources.md](docs/sources.md), and the
-[Maskaglia paper](https://eprint.iacr.org/2026/988).
+- [Maskaglia](https://eprint.iacr.org/2026/988)
+- [CS20 PINI composition](https://doi.org/10.1109/TIFS.2020.2971153)
+- [HAWK v1.1](https://hawk-sign.info/hawk-spec.pdf)
+- [source ledger](docs/sources.md)

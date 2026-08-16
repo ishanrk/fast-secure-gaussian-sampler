@@ -1,25 +1,10 @@
 #include "pqsamp_hawk.h"
 
-#include "common.h"
+#include "internal.h"
 
-static void pqsamp_hawk_clear(pqsamp_masked_i16 *out, size_t count)
-{
-  size_t i;
-
-  for (i = 0; i < count; i++)
-  {
-    unsigned share;
-
-    for (share = 0; share < PQSAMP_MAX_SHARES; share++)
-    {
-      out[i].share[share] = 0;
-    }
-  }
-}
-
-static void pqsamp_hawk_pack_center(
-    pqsamp_word *out, const pqsamp_masked_bit center[PQSAMP_LANES],
-    unsigned shares)
+static void pack_center(pqsamp_word *out,
+                        const pqsamp_masked_bit center[PQSAMP_LANES],
+                        unsigned shares)
 {
   unsigned share;
 
@@ -35,9 +20,9 @@ static void pqsamp_hawk_pack_center(
   }
 }
 
-static int pqsamp_hawk_select(pqsamp_state *state, pqsamp_word *out,
-                              const pqsamp_word *zero, const pqsamp_word *half,
-                              const pqsamp_word *center)
+static int select_center(pqsamp_state *state, pqsamp_word *out,
+                         const pqsamp_word *zero, const pqsamp_word *half,
+                         const pqsamp_word *center)
 {
   pqsamp_word selected[PQSAMP_VALUE_BITS];
   pqsamp_word borrow = *center;
@@ -77,28 +62,21 @@ static int pqsamp_hawk_select(pqsamp_state *state, pqsamp_word *out,
   return PQSAMP_OK;
 }
 
-int pqsamp_hawk_sample_masked(pqsamp_masked_i16 *out, size_t count,
+int pqsamp_hawk_sample_masked(pqsamp_masked_i16 *out, size_t n,
                               pqsamp_profile profile,
                               const pqsamp_masked_bit *center, unsigned shares,
                               pqsamp_rng *coins, pqsamp_rng *masks)
 {
-  const pqsamp_params *zero_params =
-      pqsamp_params_get(profile, PQSAMP_CENTER_ZERO);
-  const pqsamp_params *half_params =
-      pqsamp_params_get(profile, PQSAMP_CENTER_HALF);
   pqsamp_state state;
   size_t offset = 0;
 
-  if ((out == NULL && count != 0U) || (center == NULL && count != 0U) ||
-      coins == NULL || masks == NULL || masks == coins ||
-      (masks->randombytes == coins->randombytes &&
-       masks->context == coins->context) ||
-      shares < 2U || shares > PQSAMP_MAX_SHARES || zero_params == NULL ||
-      half_params == NULL)
+  if ((out == NULL && n != 0U) || (center == NULL && n != 0U) ||
+      coins == NULL || shares < 2U || shares > PQSAMP_MAX_SHARES ||
+      streams_are_distinct(coins, masks) == 0)
   {
     if (out != NULL)
     {
-      pqsamp_hawk_clear(out, count);
+      masked_clear(out, n);
     }
     return PQSAMP_ERR_PARAM;
   }
@@ -107,7 +85,7 @@ int pqsamp_hawk_sample_masked(pqsamp_masked_i16 *out, size_t count,
   state.masks = masks;
   state.stats = NULL;
 
-  while (offset < count)
+  while (offset < n)
   {
     pqsamp_masked_i16 zero[PQSAMP_LANES];
     pqsamp_masked_i16 half[PQSAMP_LANES];
@@ -117,7 +95,7 @@ int pqsamp_hawk_sample_masked(pqsamp_masked_i16 *out, size_t count,
     pqsamp_word half_planes[PQSAMP_VALUE_BITS];
     pqsamp_word out_planes[PQSAMP_VALUE_BITS];
     pqsamp_word center_plane;
-    size_t block = count - offset;
+    size_t block = n - offset;
     size_t i;
     int ret;
 
@@ -129,18 +107,18 @@ int pqsamp_hawk_sample_masked(pqsamp_masked_i16 *out, size_t count,
     {
       center_block[i] = center[offset + i];
     }
-    ret = pqsamp_generate_masked(zero, block, zero_params, shares, coins, masks,
-                                 NULL);
+    ret = pqsamp_sample_masked(zero, block, profile, PQSAMP_CENTER_ZERO, shares,
+                               coins, masks, NULL);
     if (ret != PQSAMP_OK)
     {
-      pqsamp_hawk_clear(out, count);
+      masked_clear(out, n);
       return ret;
     }
-    ret = pqsamp_generate_masked(half, block, half_params, shares, coins, masks,
-                                 NULL);
+    ret = pqsamp_sample_masked(half, block, profile, PQSAMP_CENTER_HALF, shares,
+                               coins, masks, NULL);
     if (ret != PQSAMP_OK)
     {
-      pqsamp_hawk_clear(out, count);
+      masked_clear(out, n);
       return ret;
     }
     for (i = block; i < PQSAMP_LANES; i++)
@@ -155,12 +133,12 @@ int pqsamp_hawk_sample_masked(pqsamp_masked_i16 *out, size_t count,
     }
     pqsamp_pack16(zero_planes, zero, shares);
     pqsamp_pack16(half_planes, half, shares);
-    pqsamp_hawk_pack_center(&center_plane, center_block, shares);
-    ret = pqsamp_hawk_select(&state, out_planes, zero_planes, half_planes,
-                             &center_plane);
+    pack_center(&center_plane, center_block, shares);
+    ret = select_center(&state, out_planes, zero_planes, half_planes,
+                        &center_plane);
     if (ret != PQSAMP_OK)
     {
-      pqsamp_hawk_clear(out, count);
+      masked_clear(out, n);
       return ret;
     }
     pqsamp_unpack16(selected, out_planes, shares);
