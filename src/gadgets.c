@@ -1,6 +1,5 @@
 #include "internal.h"
 
-// blocks unsafe compiler value folding
 static uint32_t value_barrier(uint32_t value)
 {
 #if defined(__GNUC__) || defined(__clang__)
@@ -13,7 +12,6 @@ static uint32_t value_barrier(uint32_t value)
   return value;
 }
 
-// clears every share in one word
 void pqsamp_word_zero(pqsamp_word *value)
 {
   unsigned i;
@@ -24,7 +22,6 @@ void pqsamp_word_zero(pqsamp_word *value)
   }
 }
 
-// flips a shared word without revealing it
 void pqsamp_word_not(pqsamp_word *out, const pqsamp_word *value,
                      unsigned shares)
 {
@@ -38,7 +35,6 @@ void pqsamp_word_not(pqsamp_word *out, const pqsamp_word *value,
   }
 }
 
-// xors two shared words share by share
 void pqsamp_word_xor(pqsamp_word *out, const pqsamp_word *left,
                      const pqsamp_word *right, unsigned shares)
 {
@@ -54,7 +50,6 @@ void pqsamp_word_xor(pqsamp_word *out, const pqsamp_word *left,
   }
 }
 
-// shares uniform coin words with fresh masks
 int pqsamp_uniform(pqsamp_state *state, pqsamp_word *out, unsigned bits)
 {
   unsigned bit;
@@ -85,7 +80,7 @@ int pqsamp_uniform(pqsamp_state *state, pqsamp_word *out, unsigned bits)
   return PQSAMP_OK;
 }
 
-// combines shared words with fresh pair masks
+// cs20 algorithm 2
 PQSAMP_NOINLINE int pqsamp_sec_and(pqsamp_state *state, pqsamp_word *out,
                                    const pqsamp_word *left,
                                    const pqsamp_word *right)
@@ -97,6 +92,7 @@ PQSAMP_NOINLINE int pqsamp_sec_and(pqsamp_state *state, pqsamp_word *out,
   unsigned i;
 
   pqsamp_word_zero(&result);
+  // fresh pair masks
   for (i = 0; i < state->shares; i++)
   {
     unsigned j;
@@ -146,7 +142,6 @@ PQSAMP_NOINLINE int pqsamp_sec_and(pqsamp_state *state, pqsamp_word *out,
   return PQSAMP_OK;
 }
 
-// tests two shared integers for equality
 int pqsamp_sec_eq(pqsamp_state *state, pqsamp_word *out,
                   const pqsamp_word *left, const pqsamp_word *right,
                   unsigned bits)
@@ -176,7 +171,6 @@ int pqsamp_sec_eq(pqsamp_state *state, pqsamp_word *out,
   return PQSAMP_OK;
 }
 
-// tests whether one shared integer is at most another
 int pqsamp_sec_leq(pqsamp_state *state, pqsamp_word *out,
                    const pqsamp_word *left, const pqsamp_word *right,
                    unsigned bits)
@@ -205,7 +199,6 @@ int pqsamp_sec_leq(pqsamp_state *state, pqsamp_word *out,
   return PQSAMP_OK;
 }
 
-// tests whether one shared integer is below another
 int pqsamp_sec_lt(pqsamp_state *state, pqsamp_word *out,
                   const pqsamp_word *left, const pqsamp_word *right,
                   unsigned bits)
@@ -221,7 +214,7 @@ int pqsamp_sec_lt(pqsamp_state *state, pqsamp_word *out,
   return PQSAMP_OK;
 }
 
-// refreshes every share before revealing the value
+// refresh before unmask
 PQSAMP_NOINLINE int pqsamp_unmask(pqsamp_state *state, const pqsamp_word *value,
                                   uint32_t *out)
 {

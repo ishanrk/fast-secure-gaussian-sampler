@@ -157,7 +157,6 @@ static const pqsamp_params s1521_ch = {
     .threshold_bits = 43,
     .side = {s1521_ch_side0, s1521_ch_side1}};
 
-// finds one fixed profile and center table
 const pqsamp_params *pqsamp_profile_get(pqsamp_profile profile,
                                         pqsamp_center center)
 {
@@ -176,7 +175,6 @@ const pqsamp_params *pqsamp_profile_get(pqsamp_profile profile,
   return NULL;
 }
 
-// checks that a profile matches the supported bounds
 int pqsamp_profile_check(const pqsamp_params *params)
 {
   unsigned side;
@@ -211,7 +209,6 @@ int pqsamp_profile_check(const pqsamp_params *params)
   return PQSAMP_OK;
 }
 
-// counts the bits needed to store a value
 unsigned pqsamp_bit_width_u32(uint32_t value)
 {
   unsigned bits = 0;

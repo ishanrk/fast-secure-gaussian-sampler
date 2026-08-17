@@ -14,7 +14,6 @@ typedef struct
 static const uint64_t coin_seed = UINT64_C(0x243f6a8885a308d3);
 static const uint64_t mask_seed = UINT64_C(0x13198a2e03707344);
 
-// advances the deterministic benchmark stream
 static uint64_t next(bench_rng *rng)
 {
   uint64_t value = rng->value;
@@ -26,7 +25,6 @@ static uint64_t next(bench_rng *rng)
   return value * UINT64_C(2685821657736338717);
 }
 
-// fills bytes from the benchmark stream
 static int randombytes(void *context, uint8_t *out, size_t size)
 {
   bench_rng *rng = context;
@@ -43,7 +41,6 @@ static int randombytes(void *context, uint8_t *out, size_t size)
   return 0;
 }
 
-// resets the coin and mask benchmark streams
 static int init_rngs(pqsamp_rng *coins, pqsamp_rng *masks,
                      bench_rng *coin_source, bench_rng *mask_source)
 {
@@ -59,7 +56,6 @@ static int init_rngs(pqsamp_rng *coins, pqsamp_rng *masks,
   return pqsamp_rng_init(masks, randombytes, mask_source);
 }
 
-// prints one benchmark record as json
 static void report(const char *backend, const char *center, unsigned shares,
                    size_t samples, clock_t elapsed, const pqsamp_stats *stats,
                    const pqsamp_trace *trace)
@@ -85,7 +81,6 @@ static void report(const char *backend, const char *center, unsigned shares,
          (double)stats->sec_and_calls / count);
 }
 
-// benchmarks both centers and every share count
 int main(void)
 {
   enum

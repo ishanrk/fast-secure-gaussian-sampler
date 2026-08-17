@@ -25,7 +25,7 @@ extern "C"
     PQSAMP_ERR_BOUND = -3
   };
 
-  // fills every requested byte or returns failure
+  // fills all bytes or fails
   typedef int (*pqsamp_randombytes)(void *context, uint8_t *out, size_t n);
 
   typedef struct
@@ -52,7 +52,7 @@ extern "C"
 
   typedef struct
   {
-    // active shares xor to the signed sample bits
+    // shares xor to sample
     uint16_t share[PQSAMP_MAX_SHARES];
   } pqsamp_masked_i16;
 
@@ -66,25 +66,23 @@ extern "C"
     uint64_t mask_bits;
   } pqsamp_stats;
 
-  // starts a caller owned random stream
   PQSAMP_WARN_UNUSED int pqsamp_rng_init(pqsamp_rng *rng,
                                          pqsamp_randombytes randombytes,
                                          void *context);
 
-  // returns scalar samples and clears output on failure
+  // clears output on failure
   PQSAMP_WARN_UNUSED int pqsamp_sample(int16_t *out, size_t n,
                                        pqsamp_profile profile,
                                        pqsamp_center center, pqsamp_rng *rng,
                                        pqsamp_stats *stats);
 
-  // returns shared samples and clears output on failure
-  // masks may be null for one share only
+  // clears output on failure
+  // masks null for one share
   PQSAMP_WARN_UNUSED int pqsamp_sample_masked(
       pqsamp_masked_i16 *out, size_t n, pqsamp_profile profile,
       pqsamp_center center, unsigned shares, pqsamp_rng *coins,
       pqsamp_rng *masks, pqsamp_stats *stats);
 
-  // returns a short error message
   const char *pqsamp_strerror(int error);
 
 #if defined(__cplusplus)

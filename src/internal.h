@@ -94,7 +94,6 @@ typedef struct
   pqsamp_stats *stats;
 } pqsamp_state;
 
-// applies the scalar rejection rule
 static inline int candidate_accept(const pqsamp_candidate *entry, unsigned k,
                                    uint64_t u)
 {
@@ -105,7 +104,6 @@ static inline int candidate_accept(const pqsamp_candidate *entry, unsigned k,
   return k > entry->quotient || u < entry->boundary_count;
 }
 
-// clears optional sampling counters
 static inline void stats_clear(pqsamp_stats *stats)
 {
   if (stats != NULL)
@@ -119,7 +117,6 @@ static inline void stats_clear(pqsamp_stats *stats)
   }
 }
 
-// clears every share in the output
 static inline void masked_clear(pqsamp_masked_i16 *out, size_t n)
 {
   size_t i;
@@ -135,7 +132,6 @@ static inline void masked_clear(pqsamp_masked_i16 *out, size_t n)
   }
 }
 
-// rejects one rng stream reused for coins and masks
 static inline int streams_are_distinct(const pqsamp_rng *coins,
                                        const pqsamp_rng *masks)
 {
@@ -144,95 +140,84 @@ static inline int streams_are_distinct(const pqsamp_rng *coins,
           masks->context != coins->context);
 }
 
-// reads up to 32 low bits from the stream
+// nonzero input
+static inline unsigned pqsamp_ctz32(uint32_t value)
+{
+#if defined(__GNUC__) || defined(__clang__)
+  return (unsigned)__builtin_ctz(value);
+#else
+  unsigned count = 0;
+
+  while ((value & 1U) == 0U)
+  {
+    value >>= 1;
+    count++;
+  }
+  return count;
+#endif
+}
+
 int pqsamp_rng_bits(pqsamp_rng *rng, unsigned count, uint32_t *value);
-// reads one 32 bit word from the stream
 int pqsamp_rng_word(pqsamp_rng *rng, uint32_t *value);
-// reads up to 64 low bits from the stream
 int pqsamp_rng_bits64(pqsamp_rng *rng, unsigned count, uint64_t *value);
 
-// finds one fixed profile and center table
 const pqsamp_params *pqsamp_profile_get(pqsamp_profile profile,
                                         pqsamp_center center);
-// checks that a profile matches the supported bounds
 int pqsamp_profile_check(const pqsamp_params *params);
-// counts the bits needed to store a value
 unsigned pqsamp_bit_width_u32(uint32_t value);
 
-// packs 32 shared samples into bit planes
 void pqsamp_pack16(pqsamp_word out[PQSAMP_VALUE_BITS],
                    const pqsamp_masked_i16 in[PQSAMP_LANES], unsigned shares);
-// unpacks bit planes into 32 shared samples
 void pqsamp_unpack16(pqsamp_masked_i16 out[PQSAMP_LANES],
                      const pqsamp_word in[PQSAMP_VALUE_BITS], unsigned shares);
 
-// shares uniform coin words with fresh masks
 int pqsamp_uniform(pqsamp_state *state, pqsamp_word *out, unsigned bits);
-// combines shared words with fresh pair masks
 int pqsamp_sec_and(pqsamp_state *state, pqsamp_word *out,
                    const pqsamp_word *left, const pqsamp_word *right);
-// tests two shared integers for equality
 int pqsamp_sec_eq(pqsamp_state *state, pqsamp_word *out,
                   const pqsamp_word *left, const pqsamp_word *right,
                   unsigned bits);
-// tests whether one shared integer is at most another
 int pqsamp_sec_leq(pqsamp_state *state, pqsamp_word *out,
                    const pqsamp_word *left, const pqsamp_word *right,
                    unsigned bits);
-// tests whether one shared integer is below another
 int pqsamp_sec_lt(pqsamp_state *state, pqsamp_word *out,
                   const pqsamp_word *left, const pqsamp_word *right,
                   unsigned bits);
-// refreshes every share before revealing the value
 int pqsamp_unmask(pqsamp_state *state, const pqsamp_word *value, uint32_t *out);
-// clears every share in one word
 void pqsamp_word_zero(pqsamp_word *value);
-// flips a shared word without revealing it
 void pqsamp_word_not(pqsamp_word *out, const pqsamp_word *value,
                      unsigned shares);
-// xors two shared words share by share
 void pqsamp_word_xor(pqsamp_word *out, const pqsamp_word *left,
                      const pqsamp_word *right, unsigned shares);
 
-// clears a zero center side pool
 void pqsamp_zero_side_pool_init(pqsamp_zero_side_pool *pool);
-// returns 32 side bits with exact one third chance of one
 int pqsamp_zero_side(pqsamp_state *state, pqsamp_zero_side_pool *pool,
                      pqsamp_word *out, pqsamp_trace *trace);
-// builds one zero center candidate batch
 int pqsamp_sample_pre(pqsamp_state *state, pqsamp_batch *batch, uint32_t *live,
                       const pqsamp_params *params,
                       pqsamp_zero_side_pool *side_pool, pqsamp_trace *trace);
-// finishes a zero center pending batch
 int pqsamp_sample_finish(pqsamp_state *state, const pqsamp_batch *batch,
                          uint32_t active, uint32_t *accept,
                          const pqsamp_params *params);
-// builds one half center candidate batch
 int pqsamp_sample_half_pre(pqsamp_state *state, pqsamp_half_batch *batch,
                            uint32_t *live, const pqsamp_params *params);
-// finishes a half center pending batch
 int pqsamp_sample_half_finish(pqsamp_state *state,
                               const pqsamp_half_batch *batch, uint32_t active,
                               uint32_t *accept, const pqsamp_params *params);
-// reconstructs accepted half center values with three and gates
 int pqsamp_half_reconstruct(pqsamp_state *state,
                             pqsamp_word out[PQSAMP_VALUE_BITS],
                             const pqsamp_half_value *value);
-// moves live zero center lanes into free batch lanes
 uint32_t pqsamp_compact_batch(pqsamp_batch *out, unsigned *filled,
                               const pqsamp_batch *in, uint32_t live,
                               unsigned shares);
-// moves live half center lanes into free batch lanes
 uint32_t pqsamp_compact_half_batch(pqsamp_half_batch *out, unsigned *filled,
                                    const pqsamp_half_batch *in, uint32_t live,
                                    unsigned shares);
-// runs the masked sampler and records internal counters
 int pqsamp_sample_masked_trace(pqsamp_masked_i16 *out, size_t n,
                                pqsamp_profile profile, pqsamp_center center,
                                unsigned shares, pqsamp_rng *coins,
                                pqsamp_rng *masks, pqsamp_stats *stats,
                                pqsamp_trace *trace);
-// counts zeros before the first one
 int pqsamp_scalar_geom(pqsamp_rng *rng, unsigned bits, unsigned *value);
 
 #endif /* pqsamp_src_internal_h */

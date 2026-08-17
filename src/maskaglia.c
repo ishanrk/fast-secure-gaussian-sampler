@@ -1,6 +1,5 @@
 #include "internal.h"
 
-// xors a public constant under a shared selector
 static void select_public(pqsamp_word *out, unsigned bits, uint64_t value,
                           const pqsamp_word *selector, unsigned shares)
 {
@@ -20,24 +19,6 @@ static void select_public(pqsamp_word *out, unsigned bits, uint64_t value,
   }
 }
 
-// finds the first set lane
-static unsigned ctz32(uint32_t value)
-{
-#if defined(__GNUC__) || defined(__clang__)
-  return (unsigned)__builtin_ctz(value);
-#else
-  unsigned count = 0;
-
-  while ((value & 1U) == 0U)
-  {
-    value >>= 1;
-    count++;
-  }
-  return count;
-#endif
-}
-
-// clears a zero center side pool
 void pqsamp_zero_side_pool_init(pqsamp_zero_side_pool *pool)
 {
   pqsamp_word_zero(&pool->word[0]);
@@ -45,14 +26,13 @@ void pqsamp_zero_side_pool_init(pqsamp_zero_side_pool *pool)
   pool->fill = 0;
 }
 
-// appends valid shared side bits in lane order
 static void zero_side_append(pqsamp_zero_side_pool *pool,
                              const pqsamp_word *value, uint32_t valid,
                              unsigned shares)
 {
   while (valid != 0U)
   {
-    unsigned src = ctz32(valid);
+    unsigned src = pqsamp_ctz32(valid);
     unsigned dst = pool->fill;
     unsigned word = dst / PQSAMP_LANES;
     unsigned bit = dst % PQSAMP_LANES;
@@ -71,7 +51,6 @@ static void zero_side_append(pqsamp_zero_side_pool *pool,
   }
 }
 
-// returns 32 side bits with exact one third chance of one
 int pqsamp_zero_side(pqsamp_state *state, pqsamp_zero_side_pool *pool,
                      pqsamp_word *out, pqsamp_trace *trace)
 {
@@ -105,7 +84,7 @@ int pqsamp_zero_side(pqsamp_state *state, pqsamp_zero_side_pool *pool,
     {
       trace->raw_side_batches++;
     }
-    // validity is public and u0 stays shared
+    // u0 stays shared
     zero_side_append(pool, &uniform[0], valid_lanes, state->shares);
   }
   if (pool->fill < PQSAMP_LANES)
@@ -119,7 +98,6 @@ int pqsamp_zero_side(pqsamp_state *state, pqsamp_zero_side_pool *pool,
   return PQSAMP_OK;
 }
 
-// builds the shared sample and rejection values for zero center
 static int sec_dlx(pqsamp_state *state, pqsamp_word *y, pqsamp_word *quotient,
                    pqsamp_word *boundary, pqsamp_word *valid,
                    const pqsamp_word *side, const pqsamp_params *params)
@@ -203,7 +181,6 @@ static int sec_dlx(pqsamp_state *state, pqsamp_word *y, pqsamp_word *quotient,
   return PQSAMP_OK;
 }
 
-// builds shared g side and rejection values for half center
 static int sec_dlx_half(pqsamp_state *state, pqsamp_half_value *value,
                         pqsamp_word *quotient, pqsamp_word *boundary,
                         pqsamp_word *valid, const pqsamp_params *params)
@@ -268,6 +245,7 @@ static int sec_dlx_half(pqsamp_state *state, pqsamp_half_value *value,
                   state->shares);
     pqsamp_word_xor(&seen_first_one, &seen_first_one, &indicator,
                     state->shares);
+    // reject g 13 s 1
     if (i + 1U == params->geom_count)
     {
       ret = pqsamp_sec_and(state, &bad_terminal, &indicator, &value->side);
@@ -281,7 +259,6 @@ static int sec_dlx_half(pqsamp_state *state, pqsamp_half_value *value,
   return PQSAMP_OK;
 }
 
-// draws a shared geometric value with saturation
 static int sec_geom_sat(pqsamp_state *state, pqsamp_word *out,
                         unsigned saturation)
 {
@@ -316,7 +293,6 @@ static int sec_geom_sat(pqsamp_state *state, pqsamp_word *out,
   return PQSAMP_OK;
 }
 
-// counts the set lanes in a public mask
 static unsigned popcount32(uint32_t value)
 {
 #if defined(__GNUC__) || defined(__clang__)
@@ -333,7 +309,6 @@ static unsigned popcount32(uint32_t value)
 #endif
 }
 
-// builds one zero center candidate batch
 int pqsamp_sample_pre(pqsamp_state *state, pqsamp_batch *batch, uint32_t *live,
                       const pqsamp_params *params,
                       pqsamp_zero_side_pool *side_pool, pqsamp_trace *trace)
@@ -377,7 +352,7 @@ int pqsamp_sample_pre(pqsamp_state *state, pqsamp_batch *batch, uint32_t *live,
   {
     return ret;
   }
-  // live is refreshed public rejection data
+  // public rejection mask
   *live = valid_lanes & ~early_lanes;
   if (state->stats != NULL)
   {
@@ -387,7 +362,6 @@ int pqsamp_sample_pre(pqsamp_state *state, pqsamp_batch *batch, uint32_t *live,
   return PQSAMP_OK;
 }
 
-// builds one half center candidate batch
 int pqsamp_sample_half_pre(pqsamp_state *state, pqsamp_half_batch *batch,
                            uint32_t *live, const pqsamp_params *params)
 {
@@ -423,7 +397,7 @@ int pqsamp_sample_half_pre(pqsamp_state *state, pqsamp_half_batch *batch,
   {
     return ret;
   }
-  // live is refreshed public rejection data
+  // public rejection mask
   *live = valid_lanes & ~early_lanes;
   if (state->stats != NULL)
   {
@@ -433,7 +407,6 @@ int pqsamp_sample_half_pre(pqsamp_state *state, pqsamp_half_batch *batch,
   return PQSAMP_OK;
 }
 
-// decides which pending candidates are accepted
 static int sample_finish(pqsamp_state *state, const pqsamp_word *k,
                          const pqsamp_word *quotient,
                          const pqsamp_word *boundary, uint32_t active,
@@ -477,7 +450,7 @@ static int sample_finish(pqsamp_state *state, const pqsamp_word *k,
   {
     return ret;
   }
-  // accept is refreshed public rejection data
+  // public rejection mask
   *accept = accept_lanes & active;
   if (state->stats != NULL)
   {
@@ -486,7 +459,6 @@ static int sample_finish(pqsamp_state *state, const pqsamp_word *k,
   return PQSAMP_OK;
 }
 
-// finishes a zero center pending batch
 int pqsamp_sample_finish(pqsamp_state *state, const pqsamp_batch *batch,
                          uint32_t active, uint32_t *accept,
                          const pqsamp_params *params)
@@ -495,7 +467,6 @@ int pqsamp_sample_finish(pqsamp_state *state, const pqsamp_batch *batch,
                        active, accept, params);
 }
 
-// finishes a half center pending batch
 int pqsamp_sample_half_finish(pqsamp_state *state,
                               const pqsamp_half_batch *batch, uint32_t active,
                               uint32_t *accept, const pqsamp_params *params)
@@ -504,7 +475,7 @@ int pqsamp_sample_half_finish(pqsamp_state *state,
                        active, accept, params);
 }
 
-// reconstructs accepted half center values with three and gates
+// three gate reconstruction
 int pqsamp_half_reconstruct(pqsamp_state *state,
                             pqsamp_word out[PQSAMP_VALUE_BITS],
                             const pqsamp_half_value *value)

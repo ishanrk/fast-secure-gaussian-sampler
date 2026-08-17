@@ -13,11 +13,9 @@ extern "C"
 
   typedef struct
   {
-    // active low bits xor to the secret center bit
     uint8_t share[PQSAMP_MAX_SHARES];
   } pqsamp_masked_bit;
 
-  // samples both centers then selects without revealing the center
   PQSAMP_WARN_UNUSED int pqsamp_hawk_sample_masked(
       pqsamp_masked_i16 *out, size_t n, pqsamp_profile profile,
       const pqsamp_masked_bit *center, unsigned shares, pqsamp_rng *coins,

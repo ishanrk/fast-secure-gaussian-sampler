@@ -10,7 +10,6 @@ typedef struct
   size_t offset;
 } fuzz_input;
 
-// repeats fuzz input as deterministic random bytes
 static int randombytes(void *context, uint8_t *out, size_t size)
 {
   fuzz_input *input = context;
@@ -28,7 +27,6 @@ static int randombytes(void *context, uint8_t *out, size_t size)
   return 0;
 }
 
-// drives scalar and masked calls from one fuzz input
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
   fuzz_input input = {data, size, 0};

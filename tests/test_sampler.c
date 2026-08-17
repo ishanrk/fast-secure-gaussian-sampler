@@ -13,13 +13,11 @@ typedef struct
   size_t offset;
 } word_source;
 
-// appends one scripted lane word
 static void push_word(word_source *source, uint32_t word)
 {
   source->word[source->count++] = word;
 }
 
-// appends one scripted bitsliced integer
 static void push_value(word_source *source, uint64_t value, unsigned bits)
 {
   unsigned bit;
@@ -30,7 +28,6 @@ static void push_value(word_source *source, uint64_t value, unsigned bits)
   }
 }
 
-// serves scripted lane words as random bytes
 static int word_randombytes(void *context, uint8_t *out, size_t n)
 {
   word_source *source = context;
@@ -50,7 +47,6 @@ static int word_randombytes(void *context, uint8_t *out, size_t n)
   return 0;
 }
 
-// appends a scripted proposal side draw
 static void push_side(word_source *source, const pqsamp_params *params,
                       unsigned side)
 {
@@ -69,7 +65,6 @@ static void push_side(word_source *source, const pqsamp_params *params,
   }
 }
 
-// reconstructs one integer from one shared lane
 static uint64_t lane_value(const pqsamp_word *word, unsigned bits,
                            unsigned lane, unsigned shares)
 {
@@ -101,7 +96,6 @@ typedef struct
   uint64_t total_ands;
 } half_result;
 
-// runs one scripted half center candidate
 static int half_case(const pqsamp_params *params, unsigned side,
                      unsigned geometric, unsigned k, uint64_t u,
                      half_result *result)
@@ -165,7 +159,6 @@ static int half_case(const pqsamp_params *params, unsigned side,
   return PQSAMP_OK;
 }
 
-// runs one scripted masked candidate
 static int masked_case(const pqsamp_params *params, unsigned side,
                        unsigned geometric, unsigned k, uint64_t u, int16_t *y,
                        int *accept)
@@ -254,7 +247,6 @@ static int masked_case(const pqsamp_params *params, unsigned side,
   return PQSAMP_OK;
 }
 
-// compares one masked decision with the scalar rule
 static int semantic_case(const pqsamp_params *params, unsigned side,
                          unsigned geometric, unsigned k, uint64_t u)
 {
@@ -278,7 +270,6 @@ static int semantic_case(const pqsamp_params *params, unsigned side,
   return 0;
 }
 
-// checks every geometric first one position
 static int proposal_positions(void)
 {
   const pqsamp_params *params =
@@ -305,7 +296,6 @@ static int proposal_positions(void)
   return 0;
 }
 
-// compares scalar and masked rejection boundaries
 static int scalar_masked_semantics(void)
 {
   unsigned profile;
@@ -378,7 +368,6 @@ static int scalar_masked_semantics(void)
   return 0;
 }
 
-// checks half center tables and terminal validity
 static int half_profile_cases(void)
 {
   unsigned profile;
@@ -429,7 +418,6 @@ static int half_profile_cases(void)
   return 0;
 }
 
-// checks fixed scalar output vectors
 static int vectors(void)
 {
   static const int16_t expected[2][2][16] = {
@@ -465,7 +453,6 @@ static int vectors(void)
   return 0;
 }
 
-// checks scalar mean and variance for one profile
 static int plain_profile(pqsamp_profile profile, pqsamp_center center,
                          double mean, double variance)
 {
@@ -499,57 +486,12 @@ static int plain_profile(pqsamp_profile profile, pqsamp_center center,
   return 0;
 }
 
-// xors active shares into one lane word
-static uint32_t word_value(const pqsamp_word *word, unsigned shares)
-{
-  uint32_t value = 0;
-  unsigned share;
-
-  for (share = 0; share < shares; share++)
-  {
-    value ^= word->share[share];
-  }
-  return value;
-}
-
-// splits one lane word into deterministic shares
-static void share_plane(pqsamp_word *word, uint32_t value, unsigned shares,
-                        uint32_t salt)
-{
-  unsigned share;
-
-  pqsamp_word_zero(word);
-  word->share[0] = value;
-  for (share = 1; share < shares; share++)
-  {
-    uint32_t mask = salt * (UINT32_C(0x9e3779b9) ^ share);
-
-    word->share[share] = mask;
-    word->share[0] ^= mask;
-  }
-}
-
-// counts set lanes without compiler helpers
-static unsigned test_popcount32(uint32_t value)
-{
-  unsigned count = 0;
-
-  while (value != 0U)
-  {
-    value &= value - 1U;
-    count++;
-  }
-  return count;
-}
-
-// appends one raw zero center pair batch
 static void push_zero_raw(word_source *source, uint32_t u0, uint32_t u1)
 {
   push_word(source, u0);
   push_word(source, u1);
 }
 
-// appends valid raw pairs to the scalar fifo model
 static void reference_side_append(uint8_t fifo[64], unsigned *fill, uint32_t u0,
                                   uint32_t u1)
 {
@@ -568,7 +510,6 @@ static void reference_side_append(uint8_t fifo[64], unsigned *fill, uint32_t u0,
   }
 }
 
-// removes one full word from the scalar fifo model
 static uint32_t reference_side_take(uint8_t fifo[64], unsigned *fill)
 {
   uint32_t out = 0;
@@ -586,7 +527,6 @@ static uint32_t reference_side_take(uint8_t fifo[64], unsigned *fill)
   return out;
 }
 
-// checks every raw pair and each share count
 static int zero_side_raw_pairs(void)
 {
   unsigned shares;
@@ -639,9 +579,9 @@ static int zero_side_raw_pairs(void)
       state.stats = &stats;
       pqsamp_zero_side_pool_init(&pool);
       PQSAMP_CHECK(pqsamp_zero_side(&state, &pool, &out, &trace) == PQSAMP_OK);
-      PQSAMP_CHECK(word_value(&out, shares) == expected);
+      PQSAMP_CHECK(test_word_value(&out, shares) == expected);
       PQSAMP_CHECK(pool.fill == fill);
-      PQSAMP_CHECK(word_value(&pool.word[0], shares) ==
+      PQSAMP_CHECK(test_word_value(&pool.word[0], shares) ==
                    (second >> (PQSAMP_LANES - fill)));
       PQSAMP_CHECK(source.offset == 4U);
       PQSAMP_CHECK(trace.raw_side_batches == 2U);
@@ -653,7 +593,6 @@ static int zero_side_raw_pairs(void)
   return 0;
 }
 
-// checks stable side compaction patterns
 static int zero_side_compaction(void)
 {
   static const uint32_t valid_masks[] = {0U, 1U, UINT32_C(0xaaaaaaaa), 3U,
@@ -705,7 +644,6 @@ static int zero_side_compaction(void)
   return 0;
 }
 
-// checks empty partial and full fifo states
 static int zero_side_fills(void)
 {
   static const unsigned fills[] = {0U, 1U, 31U, 32U, 33U, 63U};
@@ -747,8 +685,8 @@ static int zero_side_fills(void)
         high |= (uint32_t)bit << (i - PQSAMP_LANES);
       }
     }
-    share_plane(&pool.word[0], low, 3U, 71U);
-    share_plane(&pool.word[1], high, 3U, 73U);
+    test_share_word(&pool.word[0], low, 3U, 71U);
+    test_share_word(&pool.word[1], high, 3U, 73U);
     pool.fill = fill;
     if (fill < PQSAMP_LANES)
     {
@@ -769,15 +707,14 @@ static int zero_side_fills(void)
     state.masks = &masks;
     state.stats = NULL;
     PQSAMP_CHECK(pqsamp_zero_side(&state, &pool, &out, &trace) == PQSAMP_OK);
-    PQSAMP_CHECK(word_value(&out, 3U) == expected);
+    PQSAMP_CHECK(test_word_value(&out, 3U) == expected);
     PQSAMP_CHECK(pool.fill == fill);
-    PQSAMP_CHECK(word_value(&pool.word[0], 3U) == remaining);
+    PQSAMP_CHECK(test_word_value(&pool.word[0], 3U) == remaining);
     PQSAMP_CHECK(source.offset == (fills[fill_index] < PQSAMP_LANES ? 2U : 0U));
   }
   return 0;
 }
 
-// compares a scripted side pool with the scalar model
 static int zero_side_script(void)
 {
   static const uint32_t valid[6] = {
@@ -835,7 +772,6 @@ static int zero_side_script(void)
   return 0;
 }
 
-// checks exact one third counts over raw pairs
 static int zero_side_law(void)
 {
   unsigned pair;
@@ -905,7 +841,6 @@ static int zero_side_law(void)
   return 0;
 }
 
-// checks half reconstruction values and gate count
 static int half_reconstruction(void)
 {
   static const unsigned fills[] = {0U, 1U, 15U, 31U, 32U};
@@ -943,9 +878,9 @@ static int half_reconstruction(void)
       }
       for (bit = 0; bit < PQSAMP_HALF_GEOM_BITS; bit++)
       {
-        share_plane(&value.g[bit], g_plane[bit], shares, bit + 31U);
+        test_share_word(&value.g[bit], g_plane[bit], shares, bit + 31U);
       }
-      share_plane(&value.side, side_plane, shares, 47U);
+      test_share_word(&value.side, side_plane, shares, 47U);
       PQSAMP_CHECK(pqsamp_rng_init(&masks, test_randombytes, &mask_source) ==
                    PQSAMP_OK);
       stats_clear(&stats);
@@ -982,7 +917,6 @@ static int half_reconstruction(void)
   return 0;
 }
 
-// compares zero center batch values across shares
 static int batch_matches(const pqsamp_batch *actual,
                          const pqsamp_batch *expected, unsigned shares)
 {
@@ -992,7 +926,7 @@ static int batch_matches(const pqsamp_batch *actual,
   {
     unsigned share;
 
-    PQSAMP_CHECK(word_value(&actual->y[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->y[bit], shares) ==
                  expected->y[bit].share[0]);
     for (share = shares; share < PQSAMP_MAX_SHARES; share++)
     {
@@ -1003,9 +937,9 @@ static int batch_matches(const pqsamp_batch *actual,
   {
     unsigned share;
 
-    PQSAMP_CHECK(word_value(&actual->quotient[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->quotient[bit], shares) ==
                  expected->quotient[bit].share[0]);
-    PQSAMP_CHECK(word_value(&actual->k[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->k[bit], shares) ==
                  expected->k[bit].share[0]);
     for (share = shares; share < PQSAMP_MAX_SHARES; share++)
     {
@@ -1017,7 +951,7 @@ static int batch_matches(const pqsamp_batch *actual,
   {
     unsigned share;
 
-    PQSAMP_CHECK(word_value(&actual->boundary[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->boundary[bit], shares) ==
                  expected->boundary[bit].share[0]);
     for (share = shares; share < PQSAMP_MAX_SHARES; share++)
     {
@@ -1027,7 +961,6 @@ static int batch_matches(const pqsamp_batch *actual,
   return 0;
 }
 
-// compares half center batch values across shares
 static int half_batch_matches(const pqsamp_half_batch *actual,
                               const pqsamp_half_batch *expected,
                               unsigned shares)
@@ -1036,27 +969,26 @@ static int half_batch_matches(const pqsamp_half_batch *actual,
 
   for (bit = 0; bit < PQSAMP_HALF_GEOM_BITS; bit++)
   {
-    PQSAMP_CHECK(word_value(&actual->value.g[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->value.g[bit], shares) ==
                  expected->value.g[bit].share[0]);
   }
-  PQSAMP_CHECK(word_value(&actual->value.side, shares) ==
+  PQSAMP_CHECK(test_word_value(&actual->value.side, shares) ==
                expected->value.side.share[0]);
   for (bit = 0; bit < PQSAMP_K_BITS; bit++)
   {
-    PQSAMP_CHECK(word_value(&actual->quotient[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->quotient[bit], shares) ==
                  expected->quotient[bit].share[0]);
-    PQSAMP_CHECK(word_value(&actual->k[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->k[bit], shares) ==
                  expected->k[bit].share[0]);
   }
   for (bit = 0; bit < PQSAMP_BOUNDARY_BITS; bit++)
   {
-    PQSAMP_CHECK(word_value(&actual->boundary[bit], shares) ==
+    PQSAMP_CHECK(test_word_value(&actual->boundary[bit], shares) ==
                  expected->boundary[bit].share[0]);
   }
   return 0;
 }
 
-// compares zero center stages across share counts
 static int staged_share_differential(void)
 {
   unsigned profile;
@@ -1136,7 +1068,6 @@ static int staged_share_differential(void)
   return 0;
 }
 
-// compares half center stages across share counts
 static int staged_half_differential(void)
 {
   unsigned profile;
@@ -1209,14 +1140,14 @@ static int staged_half_differential(void)
                    PQSAMP_OK);
       for (bit = 0; bit < PQSAMP_VALUE_BITS; bit++)
       {
-        PQSAMP_CHECK(word_value(&y[bit], shares) == reference_y[bit].share[0]);
+        PQSAMP_CHECK(test_word_value(&y[bit], shares) ==
+                     reference_y[bit].share[0]);
       }
     }
   }
   return 0;
 }
 
-// models half center stages with scalar table rules
 static int reference_half_stages(const pqsamp_params *params, uint64_t seed,
                                  uint32_t *live, uint32_t *accept,
                                  int16_t y[PQSAMP_LANES], uint64_t *pre_bits,
@@ -1295,7 +1226,6 @@ static int reference_half_stages(const pqsamp_params *params, uint64_t seed,
   return 0;
 }
 
-// compares half center stages with the scalar model
 static int half_stage_reference(void)
 {
   unsigned profile;
@@ -1355,7 +1285,6 @@ static int half_stage_reference(void)
   return 0;
 }
 
-// samples one deterministic output tape
 static int sample_tape(pqsamp_masked_i16 *out, size_t n, pqsamp_center center,
                        pqsamp_stats *stats, pqsamp_trace *trace)
 {
@@ -1374,7 +1303,6 @@ static int sample_tape(pqsamp_masked_i16 *out, size_t n, pqsamp_center center,
   return 0;
 }
 
-// checks that a short output matches a longer prefix
 static int prefix_pair(size_t short_n, size_t long_n, pqsamp_center center)
 {
   pqsamp_masked_i16 short_out[65];
@@ -1391,7 +1319,6 @@ static int prefix_pair(size_t short_n, size_t long_n, pqsamp_center center)
   return 0;
 }
 
-// checks scheduler sizes around lane boundaries
 static int scheduler_boundaries(void)
 {
   static const size_t counts[] = {0U, 1U, 31U, 32U, 33U, 63U, 64U, 65U};
@@ -1461,7 +1388,6 @@ static int scheduler_boundaries(void)
   return 0;
 }
 
-// checks the pinned half center scheduler trace
 static int half_same_seed(void)
 {
   static const uint32_t expected_hash[2] = {UINT32_C(3346943642),
@@ -1503,7 +1429,6 @@ static int half_same_seed(void)
   return 0;
 }
 
-// fills every requested byte with zero
 static int zero_randombytes(void *context, uint8_t *out, size_t n)
 {
   size_t i;
@@ -1523,7 +1448,6 @@ typedef struct
   size_t fail_after;
 } constant_source;
 
-// fills one byte pattern and can fail by call count
 static int constant_randombytes(void *context, uint8_t *out, size_t n)
 {
   constant_source *source = context;
@@ -1541,7 +1465,6 @@ static int constant_randombytes(void *context, uint8_t *out, size_t n)
   return 0;
 }
 
-// fills output with visible nonzero sentinels
 static void fill_masked_output(pqsamp_masked_i16 *out, size_t n)
 {
   size_t i;
@@ -1558,7 +1481,6 @@ static void fill_masked_output(pqsamp_masked_i16 *out, size_t n)
   }
 }
 
-// checks that every output share is zero
 static int output_is_zero(const pqsamp_masked_i16 *out, size_t n)
 {
   size_t i;
@@ -1578,7 +1500,6 @@ static int output_is_zero(const pqsamp_masked_i16 *out, size_t n)
   return 1;
 }
 
-// checks side cap rng errors and output wiping
 static int zero_side_failures(void)
 {
   enum
@@ -1687,7 +1608,6 @@ static int zero_side_failures(void)
   return 0;
 }
 
-// checks zero center output around lane boundaries
 static int zero_output_sizes(void)
 {
   static const size_t counts[] = {0U, 1U, 31U, 32U, 33U, 63U, 64U, 65U};
@@ -1740,7 +1660,6 @@ static int zero_output_sizes(void)
   return 0;
 }
 
-// checks bounded failure and full output wiping
 static int finite_failure(void)
 {
   enum
@@ -1780,7 +1699,6 @@ static int finite_failure(void)
   return 0;
 }
 
-// checks one masked sample call and its counters
 static int masked_samples(unsigned shares)
 {
   test_rng coin_source = test_rng_make(UINT64_C(0xd1b54a32d192ed03) + shares);
@@ -1813,7 +1731,6 @@ static int masked_samples(unsigned shares)
   return 0;
 }
 
-// compares final outputs across every share count
 static int masked_share_differential(void)
 {
   enum
@@ -1887,7 +1804,6 @@ static int masked_share_differential(void)
   return 0;
 }
 
-// checks scalar rng failure and output wiping
 static int rng_failure(void)
 {
   test_rng source = test_rng_make(7U);
@@ -1906,7 +1822,6 @@ static int rng_failure(void)
   return 0;
 }
 
-// checks coin and mask failure during masked sampling
 static int masked_rng_failure(void)
 {
   enum
@@ -1988,7 +1903,6 @@ typedef struct
   uint64_t gate;
 } increment_source;
 
-// fails mask randomness at one reconstruction gate
 static int increment_randombytes(void *context, uint8_t *out, size_t n)
 {
   increment_source *source = context;
@@ -2002,7 +1916,6 @@ static int increment_randombytes(void *context, uint8_t *out, size_t n)
   return test_randombytes(&source->rng, out, n);
 }
 
-// builds a tape with one accepted half candidate
 static void half_accept_source(word_source *source)
 {
   const pqsamp_params *params =
@@ -2027,7 +1940,6 @@ static void half_accept_source(word_source *source)
   }
 }
 
-// checks output wiping after each reconstruction failure
 static int reconstruction_rng_failure(void)
 {
   uint64_t gate;
@@ -2086,7 +1998,6 @@ static int reconstruction_rng_failure(void)
   return 0;
 }
 
-// runs scalar masked scheduler and failure checks
 int main(void)
 {
   unsigned shares;

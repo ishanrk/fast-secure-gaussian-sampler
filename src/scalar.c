@@ -2,24 +2,6 @@
 
 #define PQSAMP_SCALAR_RETRIES 256U
 
-// finds the first set bit
-static unsigned ctz32(uint32_t x)
-{
-#if defined(__GNUC__) || defined(__clang__)
-  return (unsigned)__builtin_ctz(x);
-#else
-  unsigned n = 0;
-
-  while ((x & 1U) == 0U)
-  {
-    x >>= 1;
-    n++;
-  }
-  return n;
-#endif
-}
-
-// draws one proposal side with exact rational odds
 static int draw_side(pqsamp_rng *rng, const pqsamp_params *params,
                      unsigned *side)
 {
@@ -44,7 +26,6 @@ static int draw_side(pqsamp_rng *rng, const pqsamp_params *params,
   return PQSAMP_ERR_BOUND;
 }
 
-// counts zeros before the first one
 int pqsamp_scalar_geom(pqsamp_rng *rng, unsigned bits, unsigned *value)
 {
   unsigned offset = 0;
@@ -67,16 +48,15 @@ int pqsamp_scalar_geom(pqsamp_rng *rng, unsigned bits, unsigned *value)
     }
     if (found == bits && word != 0U)
     {
-      found = offset + ctz32(word);
+      found = offset + pqsamp_ctz32(word);
     }
     offset += take;
   }
-  // all zero means the proposal is invalid
+  // invalid zero proposal
   *value = found;
   return PQSAMP_OK;
 }
 
-// draws a geometric value capped at saturation
 static int draw_geom_sat(pqsamp_rng *rng, unsigned saturation, unsigned *value)
 {
   unsigned i;
@@ -100,7 +80,6 @@ static int draw_geom_sat(pqsamp_rng *rng, unsigned saturation, unsigned *value)
   return PQSAMP_OK;
 }
 
-// draws and rejects candidates until one is accepted
 static int sample_one(int16_t *out, const pqsamp_params *params,
                       pqsamp_rng *rng, pqsamp_stats *stats)
 {
@@ -164,7 +143,6 @@ static int sample_one(int16_t *out, const pqsamp_params *params,
   return PQSAMP_ERR_BOUND;
 }
 
-// clears every scalar output value
 static void clear_plain(int16_t *out, size_t n)
 {
   size_t i;
@@ -175,7 +153,6 @@ static void clear_plain(int16_t *out, size_t n)
   }
 }
 
-// returns scalar gaussian samples from one fixed profile
 int pqsamp_sample(int16_t *out, size_t n, pqsamp_profile profile,
                   pqsamp_center center, pqsamp_rng *rng, pqsamp_stats *stats)
 {

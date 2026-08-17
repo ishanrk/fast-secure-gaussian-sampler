@@ -75,8 +75,6 @@ target linking and measurement.
 - No complete masked HAWK signer or Boolean-to-arithmetic conversion.
 - No claim that the research widths equal HAWK v1.1 parameters.
 - No approval beyond the four compiled research profiles.
-- No claim that the paper's `4.0` and `4.9` comparison figures are attained;
-  they use different profiles and accounting.
 
 Accepted-lane addresses depend on the refreshed and declassified acceptance
 mask. Pending-batch addresses likewise depend on the declassified stage-one
@@ -97,6 +95,3 @@ not be silently converted into output.
 
 Invalid pointer arguments are API precondition failures. They do not authorize
 dereferencing an output solely to clear it.
-
-Profile retuning, reconciliation with the paper's gate accounting, and formal
-composition of the complete C scheduler remain research work.

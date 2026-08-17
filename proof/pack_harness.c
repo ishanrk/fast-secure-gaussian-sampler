@@ -3,10 +3,8 @@
 
 #include "internal.h"
 
-// gives cbmc an arbitrary 16 bit value
 uint16_t nondet_uint16_t(void);
 
-// proves that packing then unpacking keeps every share
 int main(void)
 {
   pqsamp_masked_i16 input[PQSAMP_LANES];

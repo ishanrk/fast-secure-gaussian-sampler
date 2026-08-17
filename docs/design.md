@@ -113,14 +113,8 @@ Zero-center samples are appended directly to the caller. Accepted half-center
 reconstructed with three secure ANDs, then copied to the caller; public surplus
 is discarded only after the requested count is reached.
 
-For the pinned `s=3/2`, `n=32768` trace, stage one costs 89 secure ANDs per
-batch, stage two costs 51, and each reconstruction costs 3. With `B1=1339`,
-`B2=1195`, and 1024 reconstruction batches, the total is exactly 183188.
-
-For zero center, accounting is exactly
-`95*stage1 + raw_side + 52*stage2`; the raw-side term costs one secure AND per
-batch. Branches and memory addresses in its FIFO depend only on refreshed,
-declassified validity masks.
+Zero-center accounting is `95*stage1 + raw_side + 52*stage2`. Half-center
+accounting is `89*stage1 + 51*stage2 + 3*reconstruction`.
 
 For `n` outputs the public cap is `4*ceil(n/32)` stage-one batches. The normal
 path stops as soon as `n` accepted values have been returned. If the cap is
@@ -163,8 +157,3 @@ It then computes `x=2z-center` with a masked borrow chain and returns Boolean
 shares. It does not reconstruct the center or sample. The adapter is useful to
 any scheme with the same two-center representation, but it is not a full masked
 HAWK signing implementation.
-
-The paper's `4.0` and `4.9` gate figures use different profiles and accounting.
-They are useful comparison points, not regression thresholds for these tables.
-Profile retuning, reconciliation with that accounting, and a complete formal
-composition proof of this scheduler remain separate research tasks.
