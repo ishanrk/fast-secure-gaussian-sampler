@@ -1,4 +1,4 @@
-# fast-secure-gaussian-sampler
+# fast-secure-gaussian-sampler - Maskaglia Implementation
 
 ## Purpose
 
@@ -7,32 +7,29 @@ This repository implements Maskaglia in portable C99 (and is my attempt to try a
 Maskaglia is a rejection sampler for discrete Gaussian distributions. A
 discrete Gaussian assigns each integer `x` a weight proportional to
 `exp(-(x-c)^2 / (2 sigma^2))`. These distributions appear in lattice based
-cryptography. Sampling this distribution is not that hard, however, protecting it from power analysis attacks
+cryptography. 
+
+Important: As you may have guessed, sampling this distribution is not that hard, however, protecting it from power analysis attacks
 or side channel attacks is hard and this paper attempts to do that.
 
 <img width="766" height="541" alt="image" src="https://github.com/user-attachments/assets/a2cf9227-57e3-4242-94f7-debc7233df19" />
-
+                  *A discrete gaussian distribution*
 
 The [Maskaglia paper](https://eprint.iacr.org/2026/988) replaces a large
 cumulative distribution table with a discrete Laplace proposal and a rejection
 test. The proposal and the test use uniform bits and geometric random values.
 The construction comes from a discrete form of a normal sampler related to
-Marsaglia. Its bit operations can be bitsliced and Boolean masked.
+Marsaglia. Its bit operations can be bitsliced and Boolean masked (to protect from power analysis)
 
 [![Continuous and discrete Gaussian rejection templates from the Maskaglia paper](https://raw.githubusercontent.com/ishanrk/fast-secure-gaussian-sampler/main/docs/assets/maskaglia-figure-1.png)](https://eprint.iacr.org/2026/988)
 
-*Figure 1 from the Maskaglia paper. Cropped from page 9. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
+*Continuous vs Discrete Algorithms from the Maskaglia paper. Cropped from page 9. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
 
 This repository exists to reproduce the paper in a small C library and measure
-its cost. It checks the finite tables with an independent high precision tool.
-It measures random bits and masked AND gates. Its API can be used in fixed
+its cost. It measures random bits and masked AND gates. Its API can be used in fixed
 profile experiments for post quantum cryptography.
 
-This is not a HAWK implementation. HAWK is one research consumer because its
-signer needs fixed width Gaussian samples from two centers. The sampler itself
-does not know about keys or signatures.
-
-## How Maskaglia works here
+## Quick Maskaglia Explanation
 
 Each sample follows five steps.
 
@@ -58,15 +55,10 @@ Each sample follows five steps.
 
 *General rejection sampling diagram by Mantheflan. [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).*
 
-The published pseudocode has inconsistent finite cases in Algorithms 9 12 and
-13. This code uses the decision rule derived from Algorithms 5 and 6. Proposal
-geometry rejects its terminal encoding. Acceptance geometry saturates at a
-fixed public bound. The exact differences and formulas are recorded in the
-[source ledger](docs/sources.md).
 
-## Current scope
+## Scope
 
-The public API supports two fixed research widths.
+The public API supports two fixed widths.
 
 1. `s = 3/2` gives `sigma = 1.2739827004320286`.
 
@@ -169,19 +161,16 @@ Run `make demo` for a complete scalar and masked example.
 
 The benchmark uses 32768 samples from the `s = 3/2` profile. The current
 portable masked path uses `6.206359863` secure AND calls per zero center sample.
-It uses `5.590454102` per half center sample. These are operation counts. They
-are not processor cycle counts.
+It uses `5.590454102` per half center sample. These are operation counts.
 
-The paper reports lower figures for different profiles and different
-accounting. The numbers should not be treated as the same benchmark. Run
-`make bench` to reproduce this repository's counters.
+ Run `make bench` to reproduce this repository's counters.
 
 The profile oracle records candidate acceptance rates from about `0.72` to
 `0.77`. It also checks the finite boundary counts and reports the estimated
 Rényi error. The checked values are stored in
 [results/profiles.json](results/profiles.json).
 
-## Security boundary
+## Security 
 
 Boolean masking splits a sensitive value into shares whose XOR is the value.
 The source follows the paper's masking structure. Secure AND uses fresh pair
@@ -190,15 +179,10 @@ randomness based on the PINI construction of
 before recombination follows the structure used by
 [Azouaoui et al](https://doi.org/10.46586/tches.v2023.i4.58-79).
 
-This does not prove that compiled code is secure against side channels. Current
-host builds spill shares to the stack and reuse registers. There are no power
-or electromagnetic measurements. There is no proof that GCC or Clang preserves
-the source masking argument.
+This does not prove that compiled code is secure against side channels. There is no proof that GCC or Clang preserves
+the source masking argument, and showing that this not the goal of my code.
 
-This library is research code. It is not ready for production cryptography.
-The exact supported claims and failure bounds are in
-[docs/security.md](docs/security.md). Open engineering and evaluation work is
-in [docs/roadmap.md](docs/roadmap.md).
+This library is research code.
 
 ## References
 
