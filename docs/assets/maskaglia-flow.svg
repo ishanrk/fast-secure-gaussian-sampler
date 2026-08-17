@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
+  <title id="title">Maskaglia sampling flow</title>
+  <desc id="desc">Random bits form a Laplace candidate which passes an integer rejection test and becomes a scalar or masked sample</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#151c34"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#222c4a"/>
+      <stop offset="1" stop-color="#18213a"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#67e8f9"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="328" rx="24" fill="url(#background)" stroke="#2a3553" stroke-width="2"/>
+  <text x="56" y="57" fill="#f8fafc" font-family="ui-sans-serif, system-ui, sans-serif" font-size="27" font-weight="700">One candidate</text>
+
+  <g fill="none" stroke="#67e8f9" stroke-width="3" marker-end="url(#arrow)">
+    <path d="M 250 174 H 316"/>
+    <path d="M 554 174 H 620"/>
+    <path d="M 858 174 H 924"/>
+  </g>
+
+  <g fill="url(#box)" stroke="#44527a" stroke-width="2">
+    <rect x="44" y="104" width="206" height="140" rx="18"/>
+    <rect x="316" y="104" width="238" height="140" rx="18"/>
+    <rect x="620" y="104" width="238" height="140" rx="18"/>
+    <rect x="924" y="104" width="232" height="140" rx="18"/>
+  </g>
+
+  <g font-family="ui-sans-serif, system-ui, sans-serif" text-anchor="middle">
+    <text x="147" y="153" fill="#f8fafc" font-size="23" font-weight="650">random bits</text>
+    <text x="147" y="189" fill="#94a3b8" font-size="17">caller supplied RNG</text>
+    <text x="147" y="216" fill="#94a3b8" font-size="17">no hidden state</text>
+
+    <text x="435" y="153" fill="#f8fafc" font-size="23" font-weight="650">Laplace proposal</text>
+    <text x="435" y="189" fill="#94a3b8" font-size="17">geometric value</text>
+    <text x="435" y="216" fill="#94a3b8" font-size="17">center and side</text>
+
+    <text x="739" y="153" fill="#f8fafc" font-size="23" font-weight="650">integer rejection</text>
+    <text x="739" y="189" fill="#94a3b8" font-size="17">fixed profile table</text>
+    <text x="739" y="216" fill="#94a3b8" font-size="17">accept or retry</text>
+
+    <text x="1040" y="153" fill="#f8fafc" font-size="23" font-weight="650">sample</text>
+    <text x="1040" y="189" fill="#94a3b8" font-size="17">scalar integer</text>
+    <text x="1040" y="216" fill="#94a3b8" font-size="17">or Boolean shares</text>
+  </g>
+
+  <path d="M 739 244 V 286 H 435 V 252" fill="none" stroke="#818cf8" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+  <text x="590" y="310" fill="#a5b4fc" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" text-anchor="middle">rejected candidates retry with fresh coins</text>
+</svg>
