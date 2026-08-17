@@ -16,10 +16,9 @@ test. The proposal and the test use uniform bits and geometric random values.
 The construction comes from a discrete form of a normal sampler related to
 Marsaglia. Its bit operations can be bitsliced and Boolean masked.
 
-<p align="center">
-  <a href="https://eprint.iacr.org/2026/988"><img src="docs/assets/maskaglia-figure-1.png" width="850" alt="Continuous and discrete Gaussian rejection templates from the Maskaglia paper"></a><br>
-  <sub>Figure 1 from the Maskaglia paper. Cropped from page 9. <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
-</p>
+[![Continuous and discrete Gaussian rejection templates from the Maskaglia paper](./docs/assets/maskaglia-figure-1.png)](https://eprint.iacr.org/2026/988)
+
+*Figure 1 from the Maskaglia paper. Cropped from page 9. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
 
 This repository exists to reproduce the paper in a small C library and measure
 its cost. It checks the finite tables with an independent high precision tool.
@@ -52,10 +51,9 @@ Each sample follows five steps.
    candidates at once. It keeps each bit as one to four Boolean shares. Only
    refreshed validity and rejection bits become public.
 
-<p align="center">
-  <a href="https://commons.wikimedia.org/wiki/File:Rejection-sampling.svg"><img src="docs/assets/rejection-sampling.png" width="500" alt="General rejection sampling diagram with acceptance and rejection zones"></a><br>
-  <sub>General rejection sampling diagram by Mantheflan. <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0 1.0</a>.</sub>
-</p>
+[![General rejection sampling diagram with acceptance and rejection zones](./docs/assets/rejection-sampling.png)](https://commons.wikimedia.org/wiki/File:Rejection-sampling.svg)
+
+*General rejection sampling diagram by Mantheflan. [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).*
 
 The published pseudocode has inconsistent finite cases in Algorithms 9 12 and
 13. This code uses the decision rule derived from Algorithms 5 and 6. Proposal
