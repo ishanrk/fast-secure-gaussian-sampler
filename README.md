@@ -2,13 +2,16 @@
 
 ## Purpose
 
-This repository implements Maskaglia in portable C99.
+This repository implements Maskaglia in portable C99 (and is my attempt to try and attempt a paper's algorithms from scratch)
 
 Maskaglia is a rejection sampler for discrete Gaussian distributions. A
 discrete Gaussian assigns each integer `x` a weight proportional to
 `exp(-(x-c)^2 / (2 sigma^2))`. These distributions appear in lattice based
-cryptography. The target law is easy to state. Protecting the computation from
-power analysis is harder.
+cryptography. Sampling this distribution is not that hard, however, protecting it from power analysis attacks
+or side channel attacks is hard and this paper attempts to do that.
+
+<img width="766" height="541" alt="image" src="https://github.com/user-attachments/assets/a2cf9227-57e3-4242-94f7-debc7233df19" />
+
 
 The [Maskaglia paper](https://eprint.iacr.org/2026/988) replaces a large
 cumulative distribution table with a discrete Laplace proposal and a rejection
