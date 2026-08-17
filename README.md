@@ -1,56 +1,103 @@
 # fast-secure-gaussian-sampler
 
-<p align="center">
-  <img src="docs/assets/discrete-gaussian.svg" width="900" alt="Maskaglia discrete Gaussian sampler">
-</p>
+## Purpose
 
-This is a portable C99 implementation of
-[Maskaglia](https://eprint.iacr.org/2026/988).
+This repository implements Maskaglia in portable C99.
 
-Maskaglia samples a discrete Gaussian by rejection. It draws a cheap discrete
-Laplace candidate and accepts it with an integer test. Its random bit and
-geometric operations are suited to bitslicing and Boolean masking.
+Maskaglia is a rejection sampler for discrete Gaussian distributions. A
+discrete Gaussian assigns each integer `x` a weight proportional to
+`exp(-(x-c)^2 / (2 sigma^2))`. These distributions appear in lattice based
+cryptography. The target law is easy to state. Protecting the computation from
+power analysis is harder.
 
-This repository implements the paper to measure its cost. It provides a scalar
-sampler and a 32 lane masked sampler for fixed profile experiments in lattice
-based cryptography.
+The [Maskaglia paper](https://eprint.iacr.org/2026/988) replaces a large
+cumulative distribution table with a discrete Laplace proposal and a rejection
+test. The proposal and the test use uniform bits and geometric random values.
+The construction comes from a discrete form of a normal sampler related to
+Marsaglia. Its bit operations can be bitsliced and Boolean masked.
 
-## How it works
+This repository exists to reproduce the paper in a small C library and measure
+its cost. It checks the finite tables with an independent high precision tool.
+It measures random bits and masked AND gates. Its API can be used in fixed
+profile experiments for post quantum cryptography.
 
-<p align="center">
-  <img src="docs/assets/maskaglia-flow.svg" width="900" alt="Maskaglia sampling flow">
-</p>
+This is not a HAWK implementation. HAWK is one research consumer because its
+signer needs fixed width Gaussian samples from two centers. The sampler itself
+does not know about keys or signatures.
 
-1. The caller provides random bytes.
+## How Maskaglia works here
 
-2. Geometric values and a side bit create a discrete Laplace candidate.
+Each sample follows five steps.
 
-3. A fixed table supplies the integer rejection values for that candidate.
+1. The caller supplies random bytes. The library buffers those bytes and reads
+   random bits from them.
 
-4. The candidate is accepted or the process starts again with fresh coins.
+2. Geometric random values and a side bit produce a discrete Laplace
+   candidate around center `0` or center `1/2`.
 
-The scalar path returns an integer. The masked path keeps each sensitive bit in
-one to four Boolean shares across 32 lanes. Only refreshed rejection data
-becomes public.
+3. A fixed profile gives the exact integer quotient and remainder for the
+   candidate rejection exponent. The sampling path uses integer arithmetic.
+   It does not call a floating point function.
 
-The finite decisions follow Algorithms 5 and 6 because Algorithms 9 12 and 13
-are inconsistent. The derivation is in the [source ledger](docs/sources.md).
+4. A second geometric value handles the integer part of the rejection test. A
+   bounded uniform value handles its fractional part. The candidate is then
+   accepted or rejected.
 
-## Scope
+5. The scalar path returns the accepted integer. The masked path processes 32
+   candidates at once. It keeps each bit as one to four Boolean shares. Only
+   refreshed validity and rejection bits become public.
 
-| profile | sigma | centers | support |
-|---|---:|---:|---:|
-| `s = 3/2` | `1.2739827004320286` | `0` and `1/2` | `[-13, 13]` |
-| `s = 1521/1000` | `1.2918184582380770` | `0` and `1/2` | `[-13, 13]` |
+The published pseudocode has inconsistent finite cases in Algorithms 9 12 and
+13. This code uses the decision rule derived from Algorithms 5 and 6. Proposal
+geometry rejects its terminal encoding. Acceptance geometry saturates at a
+fixed public bound. The exact differences and formulas are recorded in the
+[source ledger](docs/sources.md).
 
-These fixed profiles approximate the ideal Gaussian. New profiles need new
-tables and an independent error certificate.
+## Current scope
 
-The adapter maps a selected center to `2z-t` at the
-[HAWK v1.1](https://hawk-sign.info/hawk-spec.pdf) sampler boundary. Its widths
-do not match HAWK. It does not implement signing.
+The public API supports two fixed research widths.
+
+1. `s = 3/2` gives `sigma = 1.2739827004320286`.
+
+2. `s = 1521/1000` gives `sigma = 1.2918184582380770`.
+
+Each width supports center `0` and center `1/2`. Each compiled distribution has
+support from `-13` through `13`. The finite support and integer boundary counts
+approximate the ideal Gaussian. They do not make it exact.
+
+These widths are not the official HAWK widths. The HAWK adapter shows how a
+masked two center consumer can call the sampler and map `z` to `2z-t`. It does
+not provide HAWK known answer compatibility. It does not implement signing.
+The [HAWK v1.1 specification](https://hawk-sign.info/hawk-spec.pdf) defines the
+scheme boundary used by the adapter.
+
+New profiles require generated tables and an independent error certificate.
+The library does not accept unchecked tables at runtime.
+
+## Code in the repository
+
+1. [include/pqsamp.h](include/pqsamp.h) defines the public C API.
+
+2. [src/scalar.c](src/scalar.c) contains the readable scalar sampler.
+
+3. [src/maskaglia.c](src/maskaglia.c) contains the masked candidate path.
+
+4. [src/gadgets.c](src/gadgets.c) contains the Boolean masking gadgets.
+
+5. [src/masked.c](src/masked.c) contains the 32 lane scheduler.
+
+6. [src/profiles.c](src/profiles.c) contains the fixed private tables.
+
+7. [adapters/hawk](adapters/hawk) contains the two center research adapter.
+
+8. [tools/profile_oracle.c](tools/profile_oracle.c) checks the profile tables
+   with MPFR.
+
+9. [examples/sample.c](examples/sample.c) is a complete runnable example.
 
 ## Build
+
+The default build creates `build/libpqsamp.a`.
 
 ```sh
 make
@@ -59,51 +106,109 @@ make demo
 make bench
 ```
 
-`make` creates `build/libpqsamp.a`. `make adapter` creates
-`build/libpqsamp_hawk.a`. See [include/pqsamp.h](include/pqsamp.h) for the API
-and [examples/sample.c](examples/sample.c) for a complete example.
+The adapter is a separate library.
 
-The caller owns the buffers and random sources. Masked calls need independent
-coin and mask streams. The library has no heap or hidden RNG.
+```sh
+make adapter
+```
 
-## Measurement and checks
+The full validation targets are shown below. The oracle needs MPFR and GMP.
+The remaining targets need the tools named by their command.
 
-For the pinned `s = 3/2` trace the masked path uses `6.206359863` secure ANDs
-per zero center sample and `5.590454102` per half center sample. Run
-`make bench` to reproduce these operation counts.
+```sh
+make oracle
+ASAN_OPTIONS=detect_leaks=0 make sanitize
+make check-clang
+make valgrind
+make fuzz
+make cbmc
+make cross-m4
+make cross-rv32
+make assembly
+make stack
+```
 
-`make oracle` checks the tables with 512 bit MPFR arithmetic. Results are in
-[results/profiles.json](results/profiles.json). The Makefile also provides
-sanitizer fuzz CBMC stack assembly Cortex M4 and RV32 checks.
+## Use
 
-## Security status
+The application owns every output buffer and every random source. The random
+callback must fill the complete request or return failure. The library has no
+heap allocation and no hidden random source.
 
-The source follows the paper's Boolean masking structure. Secure AND uses the
-PINI construction of [Cassiers and
-Standaert](https://doi.org/10.1109/TIFS.2020.2971153).
+```c
+pqsamp_rng rng;
+int16_t out[32];
+int rc;
 
-This is not proof of side channel security. Current host builds spill shares
-and reuse registers. There are no physical leakage measurements. This is
-research code and is not ready for production. See
-[docs/security.md](docs/security.md) and [docs/roadmap.md](docs/roadmap.md).
+rc = pqsamp_rng_init(&rng, randombytes, context);
+if (rc == PQSAMP_OK)
+{
+  rc = pqsamp_sample(out, 32, PQSAMP_PROFILE_S3_2,
+                     PQSAMP_CENTER_ZERO, &rng, NULL);
+}
+```
+
+`pqsamp_sample_masked` returns Boolean shared samples. Two independent random
+streams are required when the share count is greater than one. One stream
+creates sampler coins. The other creates masks and gadget randomness. A masked
+consumer should keep every share and should not reconstruct the sample.
+
+Run `make demo` for a complete scalar and masked example.
+
+## Measured result
+
+The benchmark uses 32768 samples from the `s = 3/2` profile. The current
+portable masked path uses `6.206359863` secure AND calls per zero center sample.
+It uses `5.590454102` per half center sample. These are operation counts. They
+are not processor cycle counts.
+
+The paper reports lower figures for different profiles and different
+accounting. The numbers should not be treated as the same benchmark. Run
+`make bench` to reproduce this repository's counters.
+
+The profile oracle records candidate acceptance rates from about `0.72` to
+`0.77`. It also checks the finite boundary counts and reports the estimated
+Rényi error. The checked values are stored in
+[results/profiles.json](results/profiles.json).
+
+## Security boundary
+
+Boolean masking splits a sensitive value into shares whose XOR is the value.
+The source follows the paper's masking structure. Secure AND uses fresh pair
+randomness based on the PINI construction of
+[Cassiers and Standaert](https://doi.org/10.1109/TIFS.2020.2971153). Refresh
+before recombination follows the structure used by
+[Azouaoui et al](https://doi.org/10.46586/tches.v2023.i4.58-79).
+
+This does not prove that compiled code is secure against side channels. Current
+host builds spill shares to the stack and reuse registers. There are no power
+or electromagnetic measurements. There is no proof that GCC or Clang preserves
+the source masking argument.
+
+This library is research code. It is not ready for production cryptography.
+The exact supported claims and failure bounds are in
+[docs/security.md](docs/security.md). Open engineering and evaluation work is
+in [docs/roadmap.md](docs/roadmap.md).
 
 ## References
 
-1. Abou Haidar et al. [Maskaglia: A New, Efficient Approach to Masked Discrete
-   Gaussian Sampling](https://eprint.iacr.org/2026/988). CRYPTO 2026.
+1. Calvin Abou Haidar. Thomas Espitau. Clément Hoffmann. Mehdi Tibouchi.
+   [Maskaglia: A New, Efficient Approach to Masked Discrete Gaussian
+   Sampling](https://eprint.iacr.org/2026/988). CRYPTO 2026.
 
-2. Cassiers and Standaert. [Trivially and Efficiently Composing Masked Gadgets
-   With Probe Isolating
+2. Gaëtan Cassiers. François-Xavier Standaert.
+   [Trivially and Efficiently Composing Masked Gadgets With Probe Isolating
    Non-Interference](https://doi.org/10.1109/TIFS.2020.2971153). IEEE TIFS
    2020.
 
-3. Bronchain and Cassiers. [Bitslicing Arithmetic and Boolean Masking
-   Conversions for Fun and Profit](https://eprint.iacr.org/2022/158). TCHES
-   2022.
+3. Olivier Bronchain. Gaëtan Cassiers.
+   [Bitslicing Arithmetic and Boolean Masking Conversions for Fun and
+   Profit](https://eprint.iacr.org/2022/158). TCHES 2022.
 
-4. The full source record is in [docs/sources.md](docs/sources.md) and
-   [docs/refs.bib](docs/refs.bib).
+4. The HAWK team. [HAWK v1.1](https://hawk-sign.info/hawk-spec.pdf). 2025.
+
+5. The complete bibliography and the exact role of each source are in
+   [docs/sources.md](docs/sources.md) and [docs/refs.bib](docs/refs.bib).
 
 ## License
 
-[MIT](LICENSE)
+This project is released under the [MIT License](LICENSE).
