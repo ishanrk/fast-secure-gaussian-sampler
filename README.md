@@ -13,7 +13,7 @@ Important: As you may have guessed, sampling this distribution is not that hard,
 or side channel attacks is hard and this paper attempts to do that.
 
 <img width="766" height="541" alt="image" src="https://github.com/user-attachments/assets/a2cf9227-57e3-4242-94f7-debc7233df19" />
-                  *A discrete gaussian distribution*
+*A discrete gaussian distribution*
 
 The [Maskaglia paper](https://eprint.iacr.org/2026/988) replaces a large
 cumulative distribution table with a discrete Laplace proposal and a rejection
