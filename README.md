@@ -16,7 +16,7 @@ test. The proposal and the test use uniform bits and geometric random values.
 The construction comes from a discrete form of a normal sampler related to
 Marsaglia. Its bit operations can be bitsliced and Boolean masked.
 
-[![Continuous and discrete Gaussian rejection templates from the Maskaglia paper](./docs/assets/maskaglia-figure-1.png)](https://eprint.iacr.org/2026/988)
+[![Continuous and discrete Gaussian rejection templates from the Maskaglia paper](https://raw.githubusercontent.com/ishanrk/fast-secure-gaussian-sampler/main/docs/assets/maskaglia-figure-1.png)](https://eprint.iacr.org/2026/988)
 
 *Figure 1 from the Maskaglia paper. Cropped from page 9. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
 
@@ -51,7 +51,7 @@ Each sample follows five steps.
    candidates at once. It keeps each bit as one to four Boolean shares. Only
    refreshed validity and rejection bits become public.
 
-[![General rejection sampling diagram with acceptance and rejection zones](./docs/assets/rejection-sampling.png)](https://commons.wikimedia.org/wiki/File:Rejection-sampling.svg)
+[![General rejection sampling diagram with acceptance and rejection zones](https://raw.githubusercontent.com/ishanrk/fast-secure-gaussian-sampler/main/docs/assets/rejection-sampling.png)](https://commons.wikimedia.org/wiki/File:Rejection-sampling.svg)
 
 *General rejection sampling diagram by Mantheflan. [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).*
 
